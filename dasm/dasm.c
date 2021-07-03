@@ -103,7 +103,7 @@ static void lprintf(const char *fmt, ...)
 int main(int argc, char **argv)
 {
     FILE *infile = NULL;
-    uint16_t begin = 0x0000, end = UINT16_MAX;
+    size_t begin = 0x0000, end = V16_MEM_SIZE;
     int offsets = 0, words = 0;
 
     int r;
@@ -153,11 +153,15 @@ int main(int argc, char **argv)
     fread(memory, sizeof(uint16_t), size, infile);
     fclose(infile);
 
+    // Patch endianness
+    for(size_t i = 0; i < V16_MEM_SIZE; i++)
+        memory[i] = V16_BE16ToHost(memory[i]);
+
     fprintf(stdout, "V16 disassembler (V16DASM)\n");
     fprintf(stdout, "source file: %s\n", argv[optind]);
 
-    for(uint16_t i = begin; i < end; i++) {
-        uint16_t addr = i;
+    for(size_t i = begin; i < end; i++) {
+        uint16_t addr = (uint16_t)i;
         V16_instruction_t instr = { .word = memory[i] };
         uint16_t imms[2] = { 0 };
         if(instr.i.a_imm && ++i < end)

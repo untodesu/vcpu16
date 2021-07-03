@@ -117,6 +117,10 @@ int main(int argc, char **argv)
     fread(vm.memory, sizeof(uint16_t), size, infile);
     fclose(infile);
 
+    // Patch endianness
+    for(size_t i = 0; i < V16_MEM_SIZE; i++)
+        vm.memory[i] = V16_BE16ToHost(vm.memory[i]);
+
     clock_t starttime = clock();
     while(V16_step(&vm)) {
         if(maxtime) {

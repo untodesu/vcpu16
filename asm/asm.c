@@ -235,6 +235,10 @@ int main(int argc, char **argv)
             }
         } while(0);
 
+        instr.word = V16_hostToBE16(instr.word);
+        imms[0] = V16_hostToBE16(imms[0]);
+        imms[1] = V16_hostToBE16(imms[1]);
+
         fwrite(&instr.word, sizeof(uint16_t), 1, outfile);
         fwrite(imms, sizeof(uint16_t), num_imms, outfile);
 

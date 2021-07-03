@@ -87,4 +87,24 @@ int V16_open(V16_vm_t *vm);
 int V16_close(V16_vm_t *vm);
 int V16_step(V16_vm_t *vm);
 
+#if defined(_WIN32)
+#include <windows.h>
+static inline uint16_t V16_BE16ToHost(uint16_t word) { return htons(word); }
+static inline uint16_t V16_hostToBE16(uint16_t host) { return ntohs(host); }
+#elif defined(__linux__) || defined(__CYGWIN__)
+#include <endian.h>
+static inline uint16_t V16_BE16ToHost(uint16_t word) { return be16toh(word); }
+static inline uint16_t V16_hostToBE16(uint16_t host) { return htobe16(host); }
+#elif defined(__OpenBSD__)
+#include <sys/endian.h>
+static inline uint16_t V16_BE16ToHost(uint16_t word) { return be16toh(word); }
+static inline uint16_t V16_hostToBE16(uint16_t host) { return htobe16(host); }
+#elif defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__)
+#include <sys/endian.h>
+static inline uint16_t V16_BE16ToHost(uint16_t word) { return betoh16(word); }
+static inline uint16_t V16_hostToBE16(uint16_t host) { return htobe16(host); }
+#else
+#error Platform is unsupported!
+#endif
+
 #endif
