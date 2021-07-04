@@ -145,16 +145,13 @@ int main(int argc, char **argv)
     FILE *outfile = NULL;
 
     int r;
-    while((r = getopt(argc, argv, "o:sh")) != EOF) {
+    while((r = getopt(argc, argv, "o:h")) != EOF) {
         switch(r) {
             case 'o':
                 outfile = ASM_stricmp(optarg, "stdout") ? fopen(optarg, "wb") : stdout;
                 break;
-            case 's':
-                infile = stdin;
-                break;
             default:
-                lprintf("Usage: %s [-o <outfile|stdout>] [-h] [-s] <infile>\n", argv[0]);
+                lprintf("Usage: %s [-o <outfile|stdout>] [-h] <infile>\n", argv[0]);
                 return 1;
         }
     }
