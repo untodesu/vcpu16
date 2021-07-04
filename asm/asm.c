@@ -90,22 +90,13 @@ static inline uint16_t ASM_register(const char *id)
     return UINT16_MAX;
 }
 
-static inline char *ASM_skipComments(char *line, int *empty)
+static inline char *ASM_skipComments(char *line)
 {
     if(line) {
         size_t len = strlen(line);
         for(size_t i = 0; i < len; i++) {
             if(line[i] == '#') {
                 line[i] = 0;
-                break;
-            }
-        }
-
-        empty[0] = 1;
-        len = strlen(line);
-        for(size_t i = 0; i < len; i++) {
-            if(!isspace(line[i])) {
-                empty[0] = 0;
                 break;
             }
         }
@@ -205,8 +196,8 @@ int main(int argc, char **argv)
 
     uint16_t virt_pc = 0x0000;
     fseek(infile, 0, SEEK_SET);
-    while(line_p = ASM_skipComments(fgets(line, sizeof(line), infile), &empty)) {
-        if(empty) {
+    while(line_p = ASM_skipComments(fgets(line, sizeof(line), infile))) {
+        if(ASM_isEmptyOrWhitespace(line_p)) {
             line_no++;
             continue;
         }
@@ -247,8 +238,8 @@ int main(int argc, char **argv)
     nc = 0;
 
     fseek(infile, 0, SEEK_SET);
-    while(line_p = ASM_skipComments(fgets(line, sizeof(line), infile), &empty)) {
-        if(empty) {
+    while(line_p = ASM_skipComments(fgets(line, sizeof(line), infile))) {
+        if(ASM_isEmptyOrWhitespace(line_p)) {
             line_no++;
             continue;
         }
