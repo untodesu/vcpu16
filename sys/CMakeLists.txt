@@ -14,6 +14,3 @@ add_executable(v16sys
     "${CMAKE_CURRENT_LIST_DIR}/main.c")
 target_include_directories(v16sys PRIVATE ${SDL2_INCLUDE_DIR})
 target_link_libraries(v16sys v16 ${SDL2_LIBRARY})
-if(NOT MSVC)
-    target_link_libraries(v16sys m)
-endif()
