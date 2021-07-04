@@ -157,8 +157,8 @@ int main(int argc, char **argv)
     for(size_t i = 0; i < V16_MEM_SIZE; i++)
         memory[i] = V16_BE16ToHost(memory[i]);
 
-    fprintf(stdout, "V16 disassembler (V16DASM)\n");
-    fprintf(stdout, "source file: %s\n", argv[optind]);
+    fprintf(stdout, "%c V16 disassembler (V16DASM)\n", (offsets || words) ? ' ' : '#');
+    fprintf(stdout, "%c source file: %s\n", (offsets || words) ? ' ' : '#', argv[optind]);
 
     for(size_t i = begin; i < end; i++) {
         uint16_t addr = (uint16_t)i;
