@@ -7,26 +7,6 @@
 #define V16_FREQUENCY 3000000
 
 typedef enum {
-    V16_REGISTER_R0 = 0x00,
-    V16_REGISTER_R1 = 0x01,
-    V16_REGISTER_R2 = 0x02,
-    V16_REGISTER_R3 = 0x03,
-    V16_REGISTER_R4 = 0x04,
-    V16_REGISTER_R5 = 0x05,
-    V16_REGISTER_R6 = 0x06,
-    V16_REGISTER_R7 = 0x07,
-    V16_REGISTER_R8 = 0x08,
-    V16_REGISTER_R9 = 0x09,
-    V16_REGISTER_RI = 0x0A,
-    V16_REGISTER_RJ = 0x0B,
-    V16_REGISTER_IA = 0x0C,
-    V16_REGISTER_OF = 0x0D,
-    V16_REGISTER_SP = 0x0E,
-    V16_REGISTER_PC = 0x0F,
-    V16_REGISTER_COUNT = 16
-} V16_register_t;
-
-typedef enum {
     V16_OPCODE_NOP = 0x00,
     V16_OPCODE_HLT = 0x01,
     V16_OPCODE_PTS = 0x02,
@@ -61,15 +41,32 @@ typedef enum {
 
 } V16_opcode_t;
 
-typedef union V16_instruction {
-    uint16_t word;
-    struct {
-        uint16_t opcode : 6;
-        uint16_t a_imm : 1;
-        uint16_t a_reg : 4;
-        uint16_t b_imm : 1;
-        uint16_t b_reg : 4;
-    } i;
+typedef enum {
+    V16_REGISTER_R0 = 0x00,
+    V16_REGISTER_R1 = 0x01,
+    V16_REGISTER_R2 = 0x02,
+    V16_REGISTER_R3 = 0x03,
+    V16_REGISTER_R4 = 0x04,
+    V16_REGISTER_R5 = 0x05,
+    V16_REGISTER_R6 = 0x06,
+    V16_REGISTER_R7 = 0x07,
+    V16_REGISTER_R8 = 0x08,
+    V16_REGISTER_R9 = 0x09,
+    V16_REGISTER_RI = 0x0A,
+    V16_REGISTER_RJ = 0x0B,
+    V16_REGISTER_IA = 0x0C,
+    V16_REGISTER_OF = 0x0D,
+    V16_REGISTER_SP = 0x0E,
+    V16_REGISTER_PC = 0x0F,
+    V16_REGISTER_COUNT = 16
+} V16_register_t;
+
+typedef struct V16_instruction {
+    uint8_t opcode : 6;
+    uint8_t a_imm : 1;
+    uint8_t a_reg : 4;
+    uint8_t b_imm : 1;
+    uint8_t b_reg : 4;
 } V16_instruction_t;
 
 struct V16_vm;

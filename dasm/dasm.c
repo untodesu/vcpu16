@@ -5,7 +5,7 @@
 #include <string.h>
 #include <V16.h>
 
-static const char *DASM_mnemonic(uint16_t id)
+static const char *DASM_mnemonic(unsigned int id)
 {
     #define DASM_MNEMONIC_X(x) if(id == V16_OPCODE_##x) return #x
 
@@ -45,7 +45,7 @@ static const char *DASM_mnemonic(uint16_t id)
     return "???";
 }
 
-static const char *DASM_register(uint16_t id)
+static const char *DASM_register(unsigned int id)
 {
     #define DASM_REGISTER_X(x) if(id == V16_REGISTER_##x) return #x
 
@@ -70,25 +70,25 @@ static const char *DASM_register(uint16_t id)
     return "??";
 }
 
-static void DASM_print(FILE *fp, int offsets, int words, uint16_t addr, const V16_instruction_t *instr, const uint16_t *imms)
+static void DASM_print(FILE *fp, int offsets, int words, uint16_t addr, uint16_t word, const V16_instruction_t *instr, const uint16_t *imms)
 {
     if(offsets)
         fprintf(fp, "%04X  ", addr);
     if(words) {
-        fprintf(fp, "%04X ", instr->word);
-        fprintf(fp, instr->i.a_imm ? "%04X " : "**** ", imms[0]);
-        fprintf(fp, instr->i.b_imm ? "%04X " : "**** ", imms[1]);
+        fprintf(fp, "%04X ", word);
+        fprintf(fp, instr->a_imm ? "%04X " : "**** ", imms[0]);
+        fprintf(fp, instr->b_imm ? "%04X " : "**** ", imms[1]);
         fprintf(fp, " ");
     }
-    fprintf(fp, "%s ", DASM_mnemonic(instr->i.opcode));
-    if(instr->i.a_imm)
+    fprintf(fp, "%s ", DASM_mnemonic(instr->opcode));
+    if(instr->a_imm)
         fprintf(fp, "$0x%04X", imms[0]);
     else
-        fprintf(fp, "%%%s", DASM_register(instr->i.a_reg));
-    if(instr->i.b_imm)
+        fprintf(fp, "%%%s", DASM_register(instr->a_reg));
+    if(instr->b_imm)
         fprintf(fp, ", $0x%04X", imms[1]);
     else
-        fprintf(fp, ", %%%s", DASM_register(instr->i.b_reg));
+        fprintf(fp, ", %%%s", DASM_register(instr->b_reg));
     fprintf(fp, "\n");
 }
 
@@ -162,13 +162,22 @@ int main(int argc, char **argv)
 
     for(size_t i = begin; i < end; i++) {
         uint16_t addr = (uint16_t)i;
-        V16_instruction_t instr = { .word = memory[i] };
+        uint16_t word = memory[addr];
+
+        V16_instruction_t instr = { 
+            .opcode = (word >> 10) & 0x3F,
+            .a_imm = (word >> 9) & 0x01,
+            .a_reg = (word >> 5) & 0x0F,
+            .b_imm = (word >> 4) & 0x01,
+            .b_reg = word & 0x0F,
+        };
+
         uint16_t imms[2] = { 0 };
-        if(instr.i.a_imm && ++i < end)
+        if(instr.a_imm && ++i < end)
             imms[0] = memory[i];
-        if(instr.i.b_imm && ++i < end)
+        if(instr.b_imm && ++i < end)
             imms[1] = memory[i];
-        DASM_print(stdout, offsets, words, addr, &instr, imms);
+        DASM_print(stdout, offsets, words, addr, word, &instr, imms);
     }
 
     free(memory);

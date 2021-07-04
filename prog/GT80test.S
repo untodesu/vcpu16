@@ -1,8 +1,0 @@
-MOV $0x0000, %R1
-MOV $0x8000, %R0
-IGE $0x9000, %R0
-MOV $0x0002, %PC
-MWR %R1, %R0
-ADD $1, %R0
-ADD $1, %R1
-MOV $0x0004, %PC

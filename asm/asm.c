@@ -6,13 +6,18 @@
 #include <string.h>
 #include <V16.h>
 
-static int ASM_stricmp(const char *a, const char *b)
+typedef struct ASM_label {
+    uint16_t pc;
+    char id[65];
+} ASM_label_t;
+
+static inline int ASM_stricmp(const char *a, const char *b)
 {
     while(a[0] && tolower(a[0]) == tolower(b[0])) { a++; b++; }
     return a[0] - b[0];
 }
 
-static uint16_t ASM_atow(const char *a)
+static inline uint16_t ASM_atow(const char *a)
 {
     if(a[0] == '0' && tolower(a[1]) == 'x')
         return (uint16_t)strtol(a + 2, NULL, 16);
@@ -21,7 +26,7 @@ static uint16_t ASM_atow(const char *a)
     return (uint16_t)atoi(a);
 }
 
-static uint16_t ASM_opcode(const char *id)
+static inline uint16_t ASM_opcode(const char *id)
 {
     #define ASM_OPCODE_X(x) if(!ASM_stricmp(id, #x)) return V16_OPCODE_##x
 
@@ -35,7 +40,6 @@ static uint16_t ASM_opcode(const char *id)
     ASM_OPCODE_X(IOW);
     ASM_OPCODE_X(MRD);
     ASM_OPCODE_X(MWR);
-//  ASM_OPCODE_X(CID);
 
     ASM_OPCODE_X(MOV);
     ASM_OPCODE_X(ADD);
@@ -61,7 +65,7 @@ static uint16_t ASM_opcode(const char *id)
     return UINT16_MAX;
 }
 
-static uint16_t ASM_register(const char *id)
+static inline uint16_t ASM_register(const char *id)
 {
     #define ASM_REGISTER_X(x) if(!ASM_stricmp(id, #x)) return V16_REGISTER_##x
 
@@ -84,6 +88,56 @@ static uint16_t ASM_register(const char *id)
 
     #undef ASM_REGISTER_X
     return UINT16_MAX;
+}
+
+static inline char *ASM_skipComments(char *line, int *empty)
+{
+    if(line) {
+        size_t len = strlen(line);
+        for(size_t i = 0; i < len; i++) {
+            if(line[i] == '#') {
+                line[i] = 0;
+                break;
+            }
+        }
+
+        empty[0] = 1;
+        len = strlen(line);
+        for(size_t i = 0; i < len; i++) {
+            if(!isspace(line[i])) {
+                empty[0] = 0;
+                break;
+            }
+        }
+
+        return line;
+    }
+
+    return NULL;
+}
+
+static inline int ASM_isEmptyOrWhitespace(const char *s)
+{
+    size_t len = strlen(s);
+    if(len) {
+        for(size_t i = 0; i < len; i++) {
+            if(isspace(s[i]) || s[i] == '\n' || s[i] == '\r')
+                continue;
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+static inline const ASM_label_t *ASM_findLabel(const char *name, const ASM_label_t *labels, size_t num_labels)
+{
+    for(size_t i = 0; i < num_labels; i++) {
+        if(strcmp(labels[i].id, name))
+            continue;
+        return labels + i;
+    }
+    return NULL;
 }
 
 static void lprintf(const char *fmt, ...)
@@ -109,98 +163,155 @@ int main(int argc, char **argv)
                 infile = stdin;
                 break;
             default:
-                lprintf("Usage: V16ASM [-o <outfile|stdout>] [-h] [-s] <infile>\n");
+                lprintf("Usage: %s [-o <outfile|stdout>] [-h] [-s] <infile>\n", argv[0]);
                 return 1;
         }
     }
 
     if(!infile) {
         if(optind >= argc) {
-            lprintf("V16ASM: fatal: infile is null!\n");
+            lprintf("%s: fatal: infile is null!\n", argv[0]);
             return 1;
         }
 
         infile = fopen(argv[optind], "rb");
         if(!infile) {
-            lprintf("V16ASM: fatal: infile is null!\n");
+            lprintf("%s: fatal: infile is null!\n", argv[0]);
             return 1;
         }
     }
 
     if(!outfile) {
-        lprintf("V16ASM: fatal: outfile is null!\n");
+        lprintf("%s: fatal: outfile is null!\n", argv[0]);
         return 1;
     }
 
-    int nline = 0;
+    size_t num_lines = 0;
+    while(!feof(infile)) {
+        if(fgetc(infile) == '\n')
+            num_lines++;
+    }
+
+    ASM_label_t *labels = malloc(sizeof(ASM_label_t) * num_lines);
+    memset(labels, 0, sizeof(ASM_label_t) * num_lines);
+
+    size_t line_no = 0;
     char line[128] = { 0 };
-    char *line_p = NULL;
-    while(line_p = fgets(line, sizeof(line), infile)) {
-        V16_instruction_t instr = { .word = 0 };
-        int nc = 0;
+    char *line_p;
+    int empty = 0, nc = 0;
 
-        size_t len = strlen(line_p);
-        for(size_t i = 0; i < len; i++) {
-            if(line_p[i] == '#') {
-                line_p[i] = 0;
-                break;
-            }
-        }
+    char identifier[65] = { 0 };
+    char prefix = 0;
 
-        int empty = 1;
-        len = strlen(line_p);
-        for(size_t i = 0; i < len; i++) {
-            if(!isspace(line_p[i])) {
-                empty = 0;
-                break;
-            }
-        }
-
-        if(empty)
+    uint16_t virt_pc = 0x0000;
+    fseek(infile, 0, SEEK_SET);
+    while(line_p = ASM_skipComments(fgets(line, sizeof(line), infile), &empty)) {
+        if(empty) {
+            line_no++;
             continue;
+        }
 
-        char mnemonic[17] = { 0 };
-        sscanf(line_p, " %16s%n", mnemonic, &nc);
+        char *label_p = strchr(line_p, ':');
+        if(label_p) {
+            char *tmp = line_p;
+            label_p[0] = 0;
+            line_p = label_p + 1;
+            label_p = tmp;
+            if(ASM_opcode(label_p) == UINT16_MAX && ASM_register(label_p) == UINT16_MAX) {
+                labels[line_no].pc = virt_pc;
+                strncpy(labels[line_no].id, label_p, sizeof(labels[line_no].id));
+            }
+        }
+
+        if(ASM_isEmptyOrWhitespace(line_p)) {
+            line_no++;
+            continue;
+        }
+
+        if(sscanf(line_p, " %64s%n", identifier, &nc) == 1) {
+            line_p += nc;
+            virt_pc++;
+            for(int i = 0; i < 2; i++) {
+                if(sscanf(line_p, " %c%*[^, \t\n]%n", &prefix, &nc) != 1)
+                    break;
+                line_p += nc;
+                if(prefix == '$')
+                    virt_pc++;
+            }
+        }
+
+        line_no++;
+    }
+
+    line_no = 0;
+    nc = 0;
+
+    fseek(infile, 0, SEEK_SET);
+    while(line_p = ASM_skipComments(fgets(line, sizeof(line), infile), &empty)) {
+        if(empty) {
+            line_no++;
+            continue;
+        }
+
+        char *line_p_lab = strchr(line_p, ':');
+        if(line_p_lab)
+            line_p = line_p_lab + 1;
+
+        if(sscanf(line_p, " %65s%n", identifier, &nc) != 1) {
+            line_no++;
+            continue;
+        }
+
         line_p += nc;
 
-        uint16_t opcode = ASM_opcode(mnemonic);
+        uint16_t word = 0;
+
+        uint16_t opcode = ASM_opcode(identifier);
         if(opcode == UINT16_MAX) {
-            lprintf("V16ASM: error[%d]: unknown mnemonic %s.", nline, mnemonic);
+            lprintf("%s: error[%zu]: unknown instruction '%s'\n", argv[0], line_no, identifier);
             goto asm_quit;
         }
 
-        instr.i.opcode = opcode;
-
-        char prefix = '$';
-        char identifier[65] = { 0 };
+        word |= (opcode & 0x3F) << 10;
+        
         uint16_t imms[2] = { 0 };
         uint16_t preg = UINT16_MAX;
-        int num_imms = 0;
+        size_t num_imms = 0;
 
         do {
             if(sscanf(line_p, " %c%n", &prefix, &nc) != 1)
                 break;
             line_p += nc;
-            
-            if(sscanf(line_p, " %64[^, \t]%n", identifier, &nc) != 1)
+
+            if(sscanf(line_p, " %64[^, \t\n]%n", identifier, &nc) != 1)
                 break;
             line_p += nc;
 
             switch(prefix) {
                 case '$':
-                    instr.i.a_imm = 1;
-                    imms[num_imms++] = ASM_atow(identifier);
+                    uint16_t imm = 0;
+                    const ASM_label_t *label;
+                    if(isalpha(identifier[0])) {
+                        if(!(label = ASM_findLabel(identifier, labels, num_lines))) {
+                            lprintf("%s: error[%zu]: unknown label '%s'\n", argv[0], line_no, identifier);
+                            goto asm_quit;
+                        }
+                        imm = label->pc;
+                    }
+                    else imm = ASM_atow(identifier);
+                    word |= 1 << 9;
+                    imms[num_imms++] = imm;
                     break;
                 case '%':
                     preg = ASM_register(identifier);
                     if(preg == UINT16_MAX) {
-                        lprintf("V16ASM: error[%d]: unknown register '%s'\n", nline, identifier);
+                        lprintf("%s: error[%zu]: unknown register '%s'\n", argv[0], line_no, identifier);
                         goto asm_quit;
                     }
-                    instr.i.a_reg = preg;
+                    word |= (preg & 0x0F) << 5;
                     break;
                 default:
-                    lprintf("V16ASM: warning: unknown prefix '%c'.\n", prefix);
+                    lprintf("%s: warning[%zu]: unknown prefix '%c'.\n", argv[0], line_no, prefix);
                     break;
             }
 
@@ -211,38 +322,48 @@ int main(int argc, char **argv)
             if(sscanf(line_p, " %c%n", &prefix, &nc) != 1)
                 break;
             line_p += nc;
-            
+
             if(sscanf(line_p, " %64[^, \t\n]%n", identifier, &nc) != 1)
                 break;
             line_p += nc;
 
             switch(prefix) {
                 case '$':
-                    instr.i.b_imm = 1;
-                    imms[num_imms++] = ASM_atow(identifier);
+                    uint16_t imm = 0;
+                    const ASM_label_t *label;
+                    if(isalpha(identifier[0])) {
+                        if(!(label = ASM_findLabel(identifier, labels, num_lines))) {
+                            lprintf("%s: error[%zu]: unknown label '%s'\n", argv[0], line_no, identifier);
+                            goto asm_quit;
+                        }
+                        imm = label->pc;
+                    }
+                    else imm = ASM_atow(identifier);
+                    word |= 1 << 4;
+                    imms[num_imms++] = imm;
                     break;
                 case '%':
                     preg = ASM_register(identifier);
                     if(preg == UINT16_MAX) {
-                        lprintf("V16ASM: error[%d]: unknown register '%s'\n", nline, identifier);
+                        lprintf("%s: error[%zu]: unknown register '%s'\n", argv[0], line_no, identifier);
                         goto asm_quit;
                     }
-                    instr.i.b_reg = preg;
+                    word |= preg & 0x0F;
                     break;
                 default:
-                    lprintf("V16ASM: error[%d]: unknown prefix '%c'.\n", nline, prefix);
+                    lprintf("%s: error[%zu]: unknown prefix '%c'.\n", argv[0], line_no, prefix);
                     goto asm_quit;
             }
         } while(0);
 
-        instr.word = V16_hostToBE16(instr.word);
+        word = V16_hostToBE16(word);
         imms[0] = V16_hostToBE16(imms[0]);
         imms[1] = V16_hostToBE16(imms[1]);
 
-        fwrite(&instr.word, sizeof(uint16_t), 1, outfile);
+        fwrite(&word, sizeof(uint16_t), 1, outfile);
         fwrite(imms, sizeof(uint16_t), num_imms, outfile);
 
-        nline++;
+        line_no++;
     }
 
 asm_quit:

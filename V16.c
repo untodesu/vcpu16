@@ -10,25 +10,31 @@ typedef struct V16_instruction_internal {
 
 static inline void V16_parse(V16_vm_t *vm, V16_instruction_internal_t *instr)
 {
-    instr->info.word = vm->memory[vm->regs[V16_REGISTER_PC]++];
+    uint16_t word = vm->memory[vm->regs[V16_REGISTER_PC]++];
+
+    instr->info.opcode = (word >> 10) & 0x3F;
+    instr->info.a_imm = (word >> 9) & 0x01;
+    instr->info.a_reg = (word >> 5) & 0x0F;
+    instr->info.b_imm = (word >> 4) & 0x01;
+    instr->info.b_reg = word & 0x0F;
 
     // "A" operand
-    if(instr->info.i.a_imm) {
+    if(instr->info.a_imm) {
         instr->ap = NULL;
         instr->av = vm->memory[vm->regs[V16_REGISTER_PC]++];
     }
     else {
-        instr->ap = vm->regs + instr->info.i.a_reg;
+        instr->ap = vm->regs + instr->info.a_reg;
         instr->av = instr->ap[0];
     }
 
     // "B" operand
-    if(instr->info.i.b_imm) {
+    if(instr->info.b_imm) {
         instr->bp = NULL;
         instr->bv = vm->memory[vm->regs[V16_REGISTER_PC]++];
     }
     else {
-        instr->bp = vm->regs + instr->info.i.b_reg;
+        instr->bp = vm->regs + instr->info.b_reg;
         instr->bv = instr->bp[0];
     }
 }
@@ -72,7 +78,7 @@ int V16_step(V16_vm_t *vm)
     V16_instruction_internal_t instr;
     V16_parse(vm, &instr);
 
-    switch(instr.info.i.opcode) {
+    switch(instr.info.opcode) {
         case V16_OPCODE_NOP:
             return 1;
         case V16_OPCODE_HLT:
