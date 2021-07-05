@@ -25,7 +25,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <V16.h>
-#include "GT86.h"
+#include "LPM25.h"
 
 static void die(const char *fmt, ...)
 {
@@ -36,14 +36,16 @@ static void die(const char *fmt, ...)
     abort();
 }
 
-static int SYS_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
+static bool SYS_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
 {
+    if(LPM25_ioread(vm, port, value))
+        return true;
     return 0;
 }
 
 static void SYS_iowrite(V16_vm_t *vm, uint16_t port, uint16_t value)
 {
-    GT86_iowrite(vm, port, value);
+    LPM25_iowrite(vm, port, value);
 }
 
 int main(int argc, char **argv)
@@ -51,7 +53,7 @@ int main(int argc, char **argv)
     if(SDL_Init(SDL_INIT_EVERYTHING))
         die("SDL_Init failed\n");
 
-    SDL_Window *window = SDL_CreateWindow(argv[0], SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, GT86_WIDTH * GT86_CH_WIDTH * 4, GT86_HEIGHT * GT86_CH_HEIGHT * 4, 0);
+    SDL_Window *window = SDL_CreateWindow(argv[0], SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, LPM25_WIDTH * LPM25_CH_WIDTH * 4, LPM25_HEIGHT * LPM25_CH_HEIGHT * 4, 0);
     if(!window)
         die("SDL_CreateWindow failed\n");
     
@@ -87,7 +89,7 @@ int main(int argc, char **argv)
     for(size_t i = 0; i < V16_MEM_SIZE; i++)
         vm.memory[i] = V16_BE16ToHost(vm.memory[i]);
 
-    GT86_init(renderer, &vm);
+    LPM25_init(renderer, &vm);
 
     float cpu_freq = (float)V16_FREQUENCY;
     if(argc > 2)
@@ -97,7 +99,7 @@ int main(int argc, char **argv)
     float cpu_clock = 0.0f;
     float frequency = (float)SDL_GetPerformanceFrequency();
     Uint64 lasttime = SDL_GetPerformanceCounter();
-    Uint32 fps = (Uint32)(1000.0f / (float)GT86_FPS);
+    Uint32 fps = (Uint32)(1000.0f / (float)LPM25_FPS);
 
     for(int running = 1, rendering = 1; running;) {
         Uint64 curtime = SDL_GetPerformanceCounter();
@@ -112,7 +114,7 @@ int main(int argc, char **argv)
         }
 
         if(rendering) {
-            GT86_render(renderer, &vm);
+            LPM25_render(renderer, &vm);
             SDL_RenderPresent(renderer);
         }
 
@@ -139,7 +141,7 @@ int main(int argc, char **argv)
         }
     } 
 
-    GT86_shutdown();
+    LPM25_shutdown();
     V16_close(&vm);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

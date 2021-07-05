@@ -21,25 +21,23 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#ifndef GT86_H_
-#define GT86_H_
+#ifndef LPM25_H_
+#define LPM25_H_
 #include <SDL2/SDL.h>
 #include <V16.h>
 
-#define GT86_WIDTH      (80)
-#define GT86_HEIGHT     (25)
-#define GT86_VIDPTR     (0x8000)
-#define GT86_CHARPTR    (0x8A00)
-#define GT86_CH_WIDTH   (4)
-#define GT86_CH_HEIGHT  (8)
-#define GT86_FPS        (50) // A standard frequency in Russia
-#define GT86_IOPORT_CMD (0x00AA)
-#define GT86_CMD_CLEAR  (0x0001)
-#define GT86_CMD_RSCHR  (0x0002)
+#define LPM25_WIDTH         (80)
+#define LPM25_HEIGHT        (25)
+#define LPM25_CH_WIDTH      (4)
+#define LPM25_CH_HEIGHT     (8)
+#define LPM25_FPS           (50)
+#define LPM25_IOPORT_TEXT   (0x1F01)
+#define LPM25_IOPORT_CHAR   (0x1F02)
 
-void GT86_init(SDL_Renderer *renderer, V16_vm_t *vm);
-void GT86_shutdown();
-void GT86_render(SDL_Renderer *renderer, const V16_vm_t *vm);
-void GT86_iowrite(V16_vm_t *vm, uint16_t port, uint16_t value);
+void LPM25_init(SDL_Renderer *renderer, V16_vm_t *vm);
+void LPM25_shutdown();
+void LPM25_render(SDL_Renderer *renderer, const V16_vm_t *vm);
+bool LPM25_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value);
+void LPM25_iowrite(V16_vm_t *vm, uint16_t port, uint16_t value);
 
 #endif

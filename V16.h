@@ -23,23 +23,29 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #ifndef V16_H_
 #define V16_H_ 1
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
 #define V16_MEM_SIZE 0x10000
 #define V16_FREQUENCY 3000000
+#define V16_MAX_INTERRUPTS 256
 
 typedef enum {
     V16_OPCODE_NOP = 0x00,
     V16_OPCODE_HLT = 0x01,
     V16_OPCODE_PTS = 0x02,
     V16_OPCODE_PFS = 0x03,
-    V16_OPCODE_SCL = 0x04,
-    V16_OPCODE_SRT = 0x05,
+    V16_OPCODE_CAL = 0x04,
+    V16_OPCODE_RET = 0x05,
     V16_OPCODE_IOR = 0x06,
     V16_OPCODE_IOW = 0x07,
     V16_OPCODE_MRD = 0x08,
     V16_OPCODE_MWR = 0x09,
+    V16_OPCODE_CLI = 0x0A,
+    V16_OPCODE_STI = 0x0B,
+    V16_OPCODE_INT = 0x0C,
+    V16_OPCODE_RFI = 0x0D,
 
     V16_OPCODE_MOV = 0x10,
     V16_OPCODE_ADD = 0x11,
@@ -95,19 +101,29 @@ typedef struct V16_instruction {
 
 struct V16_vm;
 
-typedef int(*V16_ioread_func_t)(struct V16_vm *vm, uint16_t port, uint16_t *value);
+typedef bool(*V16_ioread_func_t)(struct V16_vm *vm, uint16_t port, uint16_t *value);
 typedef void(*V16_iowrite_func_t)(struct V16_vm *vm, uint16_t port, uint16_t value);
 
+typedef struct V16_intqueue {
+    bool busy;
+    bool enabled;
+    int queue_size;
+    uint16_t queue[V16_MAX_INTERRUPTS];
+} V16_intqueue_t;
+
 typedef struct V16_vm {
+    int halt;
     uint16_t *memory;
     uint16_t regs[V16_REGISTER_COUNT];
+    V16_intqueue_t intqueue;
     V16_ioread_func_t ioread;
     V16_iowrite_func_t iowrite;
 } V16_vm_t;
 
-int V16_open(V16_vm_t *vm);
-int V16_close(V16_vm_t *vm);
-int V16_step(V16_vm_t *vm);
+bool V16_open(V16_vm_t *vm);
+void V16_close(V16_vm_t *vm);
+bool V16_step(V16_vm_t *vm);
+void V16_interrupt(V16_vm_t *vm, uint16_t id);
 
 #if defined(_WIN32)
 #include <windows.h>

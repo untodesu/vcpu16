@@ -1,11 +1,11 @@
-# ASCIItest.S - test GT86's charset.
-# Prints characters 0..255
-    mov $0x0700, %r0
-    mov $0x8000, %r1
+# ASCIItest.S - prints the ASCII table
+# in seven colors, than freezes.
+mov $0x8000, %r0
+mov $0x0800, %r1
 loop:
-    igt $0x0FFF, %r0
+    ige $0x0FFF, %r1
     mov $end, %pc
-    mwr %r0, %r1
+    mwr %r1, %r0
     inc %r0
     inc %r1
     mov $loop, %pc

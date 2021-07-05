@@ -57,12 +57,16 @@ static inline uint16_t ASM_opcode(const char *id)
     ASM_OPCODE_X(HLT);
     ASM_OPCODE_X(PTS);
     ASM_OPCODE_X(PFS);
-    ASM_OPCODE_X(SCL);
-    ASM_OPCODE_X(SRT);
+    ASM_OPCODE_X(CAL);
+    ASM_OPCODE_X(RET);
     ASM_OPCODE_X(IOR);
     ASM_OPCODE_X(IOW);
     ASM_OPCODE_X(MRD);
     ASM_OPCODE_X(MWR);
+    ASM_OPCODE_X(CLI);
+    ASM_OPCODE_X(STI);
+    ASM_OPCODE_X(INT);
+    ASM_OPCODE_X(RFI);
 
     ASM_OPCODE_X(MOV);
     ASM_OPCODE_X(ADD);

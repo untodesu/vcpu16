@@ -22,7 +22,10 @@
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
-#include "GT86.h"
+#include "LPM25.h"
+
+#define LPM25_DEFAULT_TEXT (0x8000)
+#define LPM25_DEFAULT_CHAR (0x8A00)
 
 static const uint16_t charset[256 * sizeof(uint16_t)] = {
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
@@ -74,8 +77,10 @@ static const uint16_t charset[256 * sizeof(uint16_t)] = {
 };
 
 static SDL_Texture *texture = NULL;
+static uint16_t text_off = 0;
+static uint16_t char_off = 0;
 
-static inline void GT86_unpackColor(uint8_t value, SDL_Color *c)
+static inline void LPM25_unpackColor(uint8_t value, SDL_Color *c)
 {
     Uint8 cv = (value & 1) ? 255 : 180;
     c->r = ((value >> 3) & 1) ? cv : 0;
@@ -83,38 +88,40 @@ static inline void GT86_unpackColor(uint8_t value, SDL_Color *c)
     c->b = ((value >> 1) & 1) ? cv : 0;
 }
 
-void GT86_init(SDL_Renderer *renderer, V16_vm_t *vm)
+void LPM25_init(SDL_Renderer *renderer, V16_vm_t *vm)
 {
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_TARGET, GT86_WIDTH * GT86_CH_WIDTH, GT86_HEIGHT * GT86_CH_HEIGHT);
-    memcpy(vm->memory + GT86_CHARPTR, charset, sizeof(charset));
+    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_TARGET, LPM25_WIDTH * LPM25_CH_WIDTH, LPM25_HEIGHT * LPM25_CH_HEIGHT);
+    text_off = LPM25_DEFAULT_TEXT;
+    char_off = LPM25_DEFAULT_CHAR;
+    memcpy(vm->memory + char_off, charset, sizeof(charset));
 }
 
-void GT86_shutdown()
+void LPM25_shutdown()
 {
     SDL_DestroyTexture(texture);
 }
 
-void GT86_render(SDL_Renderer *renderer, const V16_vm_t *vm)
+void LPM25_render(SDL_Renderer *renderer, const V16_vm_t *vm)
 {
     SDL_SetRenderTarget(renderer, texture);
-    for(int i = 0; i < GT86_HEIGHT; i++) {
-        for(int j = 0; j < GT86_WIDTH; j++) {
-            uint16_t word = vm->memory[GT86_VIDPTR + i * GT86_WIDTH + j];
-            const uint16_t *chp = vm->memory + GT86_CHARPTR + (word & 0xFF) * 2;
+    for(int i = 0; i < LPM25_HEIGHT; i++) {
+        for(int j = 0; j < LPM25_WIDTH; j++) {
+            uint16_t word = vm->memory[text_off + i * LPM25_WIDTH + j];
+            const uint16_t *chp = vm->memory + char_off + (word & 0xFF) * 2;
 
             SDL_Color bg, fg;
-            GT86_unpackColor((word >> 12) & 0x0F, &bg);
-            GT86_unpackColor((word >> 8) & 0x0F, &fg);
+            LPM25_unpackColor((word >> 12) & 0x0F, &bg);
+            LPM25_unpackColor((word >> 8) & 0x0F, &fg);
 
             uint32_t chv = (chp[0] << 16) | chp[1];
-            for(int y = 0; y < GT86_CH_HEIGHT; y++) {
-                uint8_t row = (chv >> (32 - (GT86_CH_WIDTH * (y + 1)))) & 0x0F;
-                for(int x = 0; x < GT86_CH_WIDTH; x++) {
-                    if((row >> (GT86_CH_WIDTH - x - 1)) & 1)
+            for(int y = 0; y < LPM25_CH_HEIGHT; y++) {
+                uint8_t row = (chv >> (32 - (LPM25_CH_WIDTH * (y + 1)))) & 0x0F;
+                for(int x = 0; x < LPM25_CH_WIDTH; x++) {
+                    if((row >> (LPM25_CH_WIDTH - x - 1)) & 1)
                         SDL_SetRenderDrawColor(renderer, fg.r, fg.g, fg.b, 255);
                     else
                         SDL_SetRenderDrawColor(renderer, bg.r, bg.g, bg.b, 255);
-                    SDL_RenderDrawPoint(renderer, j * GT86_CH_WIDTH + x, i * GT86_CH_HEIGHT + y);
+                    SDL_RenderDrawPoint(renderer, j * LPM25_CH_WIDTH + x, i * LPM25_CH_HEIGHT + y);
                 }
             }
         }
@@ -123,16 +130,28 @@ void GT86_render(SDL_Renderer *renderer, const V16_vm_t *vm)
     SDL_RenderCopy(renderer, texture, NULL, NULL);
 }
 
-void GT86_iowrite(V16_vm_t *vm, uint16_t port, uint16_t value)
+bool LPM25_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
 {
-    if(port == GT86_IOPORT_CMD) {
-        switch(value) {
-            case GT86_CMD_CLEAR:
-                memset(vm->memory + GT86_VIDPTR, 0, sizeof(uint16_t) * GT86_WIDTH * GT86_HEIGHT);
-                break;
-            case GT86_CMD_RSCHR:
-                memcpy(vm->memory + GT86_CHARPTR, charset, sizeof(charset));
-                break;
-        }
+    switch(port) {
+        case LPM25_IOPORT_TEXT:
+            value[0] = text_off;
+            return true;
+        case LPM25_IOPORT_CHAR:
+            value[0] = char_off;
+            return true;
+    }
+
+    return false;
+}
+
+void LPM25_iowrite(V16_vm_t *vm, uint16_t port, uint16_t value)
+{
+    switch(port) {
+        case LPM25_IOPORT_TEXT:
+            text_off = value;
+            return;
+        case LPM25_IOPORT_CHAR:
+            char_off = value;
+            return;
     }
 }

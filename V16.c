@@ -70,13 +70,13 @@ static inline void V16_set(V16_vm_t *vm, uint32_t value, uint16_t *dest)
     }
 }
 
-int V16_open(V16_vm_t *vm)
+bool V16_open(V16_vm_t *vm)
 {
     memset(vm, 0, sizeof(V16_vm_t));
 
     vm->memory = malloc(sizeof(uint16_t) * V16_MEM_SIZE);
     if(!vm->memory)
-        return 0;
+        return false;
     
     vm->regs[V16_REGISTER_OF] = 0xFFFF;
     vm->regs[V16_REGISTER_SP] = 0xFFFF;
@@ -85,123 +85,164 @@ int V16_open(V16_vm_t *vm)
     vm->ioread = NULL;
     vm->iowrite = NULL;
 
-    return 1;
+    return true;
 }
 
-int V16_close(V16_vm_t *vm)
+void V16_close(V16_vm_t *vm)
 {
     free(vm->memory);
     memset(vm, 0, sizeof(V16_vm_t));
-    return 1;
 }
 
-int V16_step(V16_vm_t *vm)
+bool V16_step(V16_vm_t *vm)
 {
+    if(vm->halt)
+        return vm->intqueue.enabled;
+    
+    if(vm->intqueue.enabled && vm->intqueue.queue_size > 0 && !vm->intqueue.busy) {
+        vm->intqueue.busy = true;
+        vm->memory[vm->regs[V16_REGISTER_SP]--] = vm->regs[V16_REGISTER_PC];
+        vm->memory[vm->regs[V16_REGISTER_SP]--] = vm->regs[V16_REGISTER_R0];
+        vm->regs[V16_REGISTER_PC] = vm->regs[V16_REGISTER_IA];
+        vm->regs[V16_REGISTER_R0] = vm->intqueue.queue[--vm->intqueue.queue_size];
+    }
+
     uint16_t ioread_temp = 0;
     V16_instruction_internal_t instr;
     V16_parse(vm, &instr);
 
     switch(instr.info.opcode) {
         case V16_OPCODE_NOP:
-            return 1;
+            return true;
         case V16_OPCODE_HLT:
-            return 0;
+            if(!vm->intqueue.enabled)
+                return false;
+            vm->halt = true;
+            return true;
         case V16_OPCODE_PTS:
             vm->memory[vm->regs[V16_REGISTER_SP]--] = instr.av;
-            return 1;
+            return true;
         case V16_OPCODE_PFS:
             V16_set(vm, vm->memory[++vm->regs[V16_REGISTER_SP]], instr.ap);
-            return 1;
-        case V16_OPCODE_SCL:
+            return true;
+        case V16_OPCODE_CAL:
             vm->memory[vm->regs[V16_REGISTER_SP]--] = vm->regs[V16_REGISTER_PC];
             vm->regs[V16_REGISTER_PC] = instr.av;
-            return 1;
-        case V16_OPCODE_SRT:
+            return true;
+        case V16_OPCODE_RET:
             vm->regs[V16_REGISTER_PC] = vm->memory[++vm->regs[V16_REGISTER_PC]];
-            return 1;
+            return true;
         case V16_OPCODE_IOR:
             if(vm->ioread && vm->ioread(vm, instr.av, &ioread_temp))
                 V16_set(vm, ioread_temp, instr.bp);
-            return 1;
+            return true;
         case V16_OPCODE_IOW:
             if(vm->iowrite)
                 vm->iowrite(vm, instr.bv, instr.av);
-            return 1;
+            return true;
         case V16_OPCODE_MRD:
             V16_set(vm, vm->memory[instr.av], instr.bp);
-            return 1;
+            return true;
         case V16_OPCODE_MWR:
             vm->memory[instr.bv] = instr.av;
-            return 1;
+            return true;
+        case V16_OPCODE_CLI:
+            vm->intqueue.enabled = 0;
+            return true;
+        case V16_OPCODE_STI:
+            vm->intqueue.enabled = 1;
+            return true;
+        case V16_OPCODE_INT:
+            V16_interrupt(vm, instr.av);
+            return true;
+        case V16_OPCODE_RFI:
+            vm->regs[V16_REGISTER_R0] = vm->memory[++vm->regs[V16_REGISTER_SP]];
+            vm->regs[V16_REGISTER_PC] = vm->memory[++vm->regs[V16_REGISTER_SP]];
+            vm->intqueue.busy = 0;
+            return true;
         
         case V16_OPCODE_MOV:
             V16_set(vm, instr.av, instr.bp);
-            return 1;
+            return true;
         case V16_OPCODE_ADD:
             V16_set(vm, instr.bv + instr.av, instr.bp);
-            return 1;
+            return true;
         case V16_OPCODE_SUB:
             V16_set(vm, instr.bv - instr.av, instr.bp);
-            return 1;
+            return true;
         case V16_OPCODE_MUL:
             V16_set(vm, instr.bv * instr.av, instr.bp);
-            return 1;
+            return true;
         case V16_OPCODE_DIV:
             V16_set(vm, instr.av ? (instr.bv / instr.av) : 0, instr.bp);
-            return 1;
+            return true;
         case V16_OPCODE_MOD:
             V16_set(vm, instr.av ? (instr.bv / instr.av) : instr.bv, instr.bp);
-            return 1;
+            return true;
         case V16_OPCODE_SHL:
             V16_set(vm, instr.bv << instr.av, instr.bp);
-            return 1;
+            return true;
         case V16_OPCODE_SHR:
             V16_set(vm, instr.bv >> instr.av, instr.bp);
-            return 1;
+            return true;
         case V16_OPCODE_AND:
             V16_set(vm, instr.bv & instr.av, instr.bp);
-            return 1;
+            return true;
         case V16_OPCODE_BOR:
             V16_set(vm, instr.bv | instr.av, instr.bp);
-            return 1;
+            return true;
         case V16_OPCODE_XOR:
             V16_set(vm, instr.bv ^ instr.av, instr.bp);
-            return 1;
+            return true;
         case V16_OPCODE_NOT:
             V16_set(vm, ~instr.av, instr.ap);
-            return 1;
+            return true;
         case V16_OPCODE_INC:
             V16_set(vm, instr.av + 1, instr.ap);
-            return 1;
+            return true;
         case V16_OPCODE_DEC:
             V16_set(vm, instr.av - 1, instr.ap);
-            return 1;
+            return true;
         
         case V16_OPCODE_IEQ:
             if(!(instr.bv == instr.av))
                 V16_parse(vm, &instr);
-            return 1;
+            return true;
         case V16_OPCODE_INE:
             if(!(instr.bv != instr.av))
                 V16_parse(vm, &instr);
-            return 1;
+            return true;
         case V16_OPCODE_IGT:
             if(!(instr.bv > instr.av))
                 V16_parse(vm, &instr);
-            return 1;
+            return true;
         case V16_OPCODE_IGE:
             if(!(instr.bv >= instr.av))
                 V16_parse(vm, &instr);
-            return 1;
+            return true;
         case V16_OPCODE_ILT:
             if(!(instr.bv < instr.av))
                 V16_parse(vm, &instr);
-            return 1;
+            return true;
         case V16_OPCODE_ILE:
             if(!(instr.bv <= instr.av))
                 V16_parse(vm, &instr);
-            return 1;
+            return true;
     }
 
-    return 1;
+    return false;
+}
+
+void V16_interrupt(V16_vm_t *vm, uint16_t id)
+{
+    if(vm->intqueue.enabled) {
+        if(vm->intqueue.queue_size >= V16_MAX_INTERRUPTS) {
+            vm->halt = true;
+            vm->intqueue.enabled = false;
+            return;
+        }
+
+        vm->halt = false;
+        vm->intqueue.queue[vm->intqueue.queue_size++] = id;
+    }
 }

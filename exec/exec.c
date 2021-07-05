@@ -71,14 +71,14 @@ static void lprintf(const char *fmt, ...)
     va_end(ap);
 }
 
-static int EXEC_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
+static bool EXEC_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
 {
     if(port == 0x00FF) {
         value[0] = (uint16_t)fgetc(stdin);
-        return 1;
+        return true;
     }
 
-    return 0;
+    return false;
 }
 
 static void EXEC_iowrite(V16_vm_t *vm, uint16_t port, uint16_t value)
