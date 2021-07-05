@@ -24,7 +24,7 @@
 #include <string.h>
 #include "GT86.h"
 
-static const uint16_t charset[128 * sizeof(uint16_t)] = {
+static const uint16_t charset[256 * sizeof(uint16_t)] = {
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
@@ -68,6 +68,9 @@ static const uint16_t charset[128 * sizeof(uint16_t)] = {
     0x0244, 0xC442, 0x0444, 0x4444, 0x0844, 0x6448, 0x0002, 0xE800,
 
     0x0000, 0x0000,
+
+    // TODO: extended ASCII table with cyrillic characters and
+    // stuff
 };
 
 static SDL_Texture *texture = NULL;
@@ -118,4 +121,18 @@ void GT86_render(SDL_Renderer *renderer, const V16_vm_t *vm)
     }
     SDL_SetRenderTarget(renderer, NULL);
     SDL_RenderCopy(renderer, texture, NULL, NULL);
+}
+
+void GT86_iowrite(V16_vm_t *vm, uint16_t port, uint16_t value)
+{
+    if(port == GT86_IOPORT_CMD) {
+        switch(value) {
+            case GT86_CMD_CLEAR:
+                memset(vm->memory + GT86_VIDPTR, 0, sizeof(uint16_t) * GT86_WIDTH * GT86_HEIGHT);
+                break;
+            case GT86_CMD_RSCHR:
+                memcpy(vm->memory + GT86_CHARPTR, charset, sizeof(charset));
+                break;
+        }
+    }
 }

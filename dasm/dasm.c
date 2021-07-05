@@ -42,7 +42,6 @@ static const char *DASM_mnemonic(unsigned int id)
     DASM_MNEMONIC_X(IOW);
     DASM_MNEMONIC_X(MRD);
     DASM_MNEMONIC_X(MWR);
-//  DASM_MNEMONIC_X(CID);
 
     DASM_MNEMONIC_X(MOV);
     DASM_MNEMONIC_X(ADD);
@@ -56,6 +55,8 @@ static const char *DASM_mnemonic(unsigned int id)
     DASM_MNEMONIC_X(BOR);
     DASM_MNEMONIC_X(XOR);
     DASM_MNEMONIC_X(NOT);
+    DASM_MNEMONIC_X(INC);
+    DASM_MNEMONIC_X(DEC);
 
     DASM_MNEMONIC_X(IEQ);
     DASM_MNEMONIC_X(INE);

@@ -170,6 +170,12 @@ int V16_step(V16_vm_t *vm)
         case V16_OPCODE_NOT:
             V16_set(vm, ~instr.av, instr.ap);
             return 1;
+        case V16_OPCODE_INC:
+            V16_set(vm, instr.av + 1, instr.ap);
+            return 1;
+        case V16_OPCODE_DEC:
+            V16_set(vm, instr.av - 1, instr.ap);
+            return 1;
         
         case V16_OPCODE_IEQ:
             if(!(instr.bv == instr.av))

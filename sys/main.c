@@ -36,14 +36,14 @@ static void die(const char *fmt, ...)
     abort();
 }
 
-static int sysioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
+static int SYS_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
 {
-    if(port == 0x00FF) {
-        value[0] = (uint16_t)getchar();
-        return 1;
-    }
-
     return 0;
+}
+
+static void SYS_iowrite(V16_vm_t *vm, uint16_t port, uint16_t value)
+{
+    GT86_iowrite(vm, port, value);
 }
 
 int main(int argc, char **argv)
@@ -63,7 +63,8 @@ int main(int argc, char **argv)
     if(!V16_open(&vm))
         die("V16_open failed\n");
 
-    vm.ioread = sysioread;
+    vm.ioread = SYS_ioread;
+    vm.iowrite = SYS_iowrite;
 
     if(argc < 2)
         die("Argument required!\n");

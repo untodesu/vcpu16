@@ -33,9 +33,13 @@
 #define GT86_CH_WIDTH   (4)
 #define GT86_CH_HEIGHT  (8)
 #define GT86_FPS        (50) // A standard frequency in Russia
+#define GT86_IOPORT_CMD (0x00AA)
+#define GT86_CMD_CLEAR  (0x0001)
+#define GT86_CMD_RSCHR  (0x0002)
 
 void GT86_init(SDL_Renderer *renderer, V16_vm_t *vm);
 void GT86_shutdown();
 void GT86_render(SDL_Renderer *renderer, const V16_vm_t *vm);
+void GT86_iowrite(V16_vm_t *vm, uint16_t port, uint16_t value);
 
 #endif

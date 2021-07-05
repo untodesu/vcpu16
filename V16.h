@@ -40,7 +40,6 @@ typedef enum {
     V16_OPCODE_IOW = 0x07,
     V16_OPCODE_MRD = 0x08,
     V16_OPCODE_MWR = 0x09,
-//  V16_OPCODE_CID = 0x0A,
 
     V16_OPCODE_MOV = 0x10,
     V16_OPCODE_ADD = 0x11,
@@ -54,6 +53,8 @@ typedef enum {
     V16_OPCODE_BOR = 0x19,
     V16_OPCODE_XOR = 0x1A,
     V16_OPCODE_NOT = 0x1B,
+    V16_OPCODE_INC = 0x1C,
+    V16_OPCODE_DEC = 0x1D,
 
     V16_OPCODE_IEQ = 0x20,
     V16_OPCODE_INE = 0x21,

@@ -76,6 +76,8 @@ static inline uint16_t ASM_opcode(const char *id)
     ASM_OPCODE_X(BOR);
     ASM_OPCODE_X(XOR);
     ASM_OPCODE_X(NOT);
+    ASM_OPCODE_X(INC);
+    ASM_OPCODE_X(DEC);
 
     ASM_OPCODE_X(IEQ);
     ASM_OPCODE_X(INE);
@@ -242,12 +244,22 @@ int main(int argc, char **argv)
         if(sscanf(line_p, " %64s%n", identifier, &nc) == 1) {
             line_p += nc;
             virt_pc++;
-            for(int i = 0; i < 2; i++) {
-                if(sscanf(line_p, " %c%*[^, \t\n]%n", &prefix, &nc) != 1)
+
+            for(int j = 0; j < 2; j++) {
+                if(sscanf(line_p, " %c%n", &prefix, &nc) != 1)
                     break;
                 line_p += nc;
+
+                if(sscanf(line_p, " %64[^, \t\n]%n", identifier, &nc) != 1)
+                    break;
+                line_p += nc;
+
                 if(prefix == '$')
                     virt_pc++;
+                
+                if(sscanf(line_p, " %c%n", &prefix, &nc) != 1 && prefix != ',')
+                    break;
+                line_p += nc;
             }
         }
 
