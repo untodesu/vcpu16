@@ -21,24 +21,27 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
 // OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#ifndef LPM25_H_
-#define LPM25_H_
+#ifndef KEYBOARD_H_
+#define KEYBOARD_H_ 1
 #include <SDL2/SDL.h>
 #include <V16.h>
 
-#define LPM26_HARDWARE_ID   (0x1F25)
-#define LPM25_WIDTH         (80)
-#define LPM25_HEIGHT        (25)
-#define LPM25_CH_WIDTH      (4)
-#define LPM25_CH_HEIGHT     (8)
-#define LPM25_FPS           (50)
-#define LPM25_IOPORT_TEXT   (0x1F01)
-#define LPM25_IOPORT_CHAR   (0x1F02)
+#define KB_BUFFER_SIZE  (16)
+#define KB_HARDWARE_ID  (0x000F)
+#define KB_IOPORT       (0x000F)
+#define KB_CHR_BACKSP   (0xFF01)
+#define KB_CHR_RETURN   (0xFF02)
+#define KB_CHR_INSERT   (0xFF03)
+#define KB_CHR_DELETE   (0xFF04)
+#define KB_CHR_UP       (0xFF05)
+#define KB_CHR_DOWN     (0xFF06)
+#define KB_CHR_LEFT     (0xFF07)
+#define KB_CHR_RIGHT    (0xFF08)
+#define KB_CHR_SHIFT    (0xFF09)
+#define KB_CHR_CTRL     (0xFF0A)
 
-void LPM25_init(SDL_Renderer *renderer, V16_vm_t *vm);
-void LPM25_shutdown();
-void LPM25_render(SDL_Renderer *renderer, const V16_vm_t *vm);
-bool LPM25_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value);
-void LPM25_iowrite(V16_vm_t *vm, uint16_t port, uint16_t value);
+void KB_init();
+void KB_update(V16_vm_t *vm, const SDL_Event *event);
+bool KB_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value);
 
-#endif
+#endif 

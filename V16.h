@@ -27,9 +27,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define V16_MEM_SIZE 0x10000
-#define V16_FREQUENCY 3000000
-#define V16_MAX_INTERRUPTS 256
+#define V16_MEM_SIZE        (0x10000)
+#define V16_FREQUENCY       (3000000)
+#define V16_MAX_INTERRUPTS  (256)
 
 typedef enum {
     V16_OPCODE_NOP = 0x00,

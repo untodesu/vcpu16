@@ -147,10 +147,10 @@ bool V16_step(V16_vm_t *vm)
             vm->memory[instr.bv] = instr.av;
             return true;
         case V16_OPCODE_CLI:
-            vm->intqueue.enabled = 0;
+            vm->intqueue.enabled = false;
             return true;
         case V16_OPCODE_STI:
-            vm->intqueue.enabled = 1;
+            vm->intqueue.enabled = true;
             return true;
         case V16_OPCODE_INT:
             V16_interrupt(vm, instr.av);
@@ -158,7 +158,7 @@ bool V16_step(V16_vm_t *vm)
         case V16_OPCODE_RFI:
             vm->regs[V16_REGISTER_R0] = vm->memory[++vm->regs[V16_REGISTER_SP]];
             vm->regs[V16_REGISTER_PC] = vm->memory[++vm->regs[V16_REGISTER_SP]];
-            vm->intqueue.busy = 0;
+            vm->intqueue.busy = false;
             return true;
         
         case V16_OPCODE_MOV:

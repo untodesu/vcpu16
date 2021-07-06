@@ -25,6 +25,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <V16.h>
+#include "keyboard.h"
 #include "LPM25.h"
 
 static void die(const char *fmt, ...)
@@ -38,6 +39,8 @@ static void die(const char *fmt, ...)
 
 static bool SYS_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
 {
+    if(KB_ioread(vm, port, value))
+        return true;
     if(LPM25_ioread(vm, port, value))
         return true;
     return 0;
@@ -89,6 +92,7 @@ int main(int argc, char **argv)
     for(size_t i = 0; i < V16_MEM_SIZE; i++)
         vm.memory[i] = V16_BE16ToHost(vm.memory[i]);
 
+    KB_init();
     LPM25_init(renderer, &vm);
 
     float cpu_freq = (float)V16_FREQUENCY;
@@ -138,6 +142,8 @@ int main(int argc, char **argv)
                 }
                 break;
             }
+
+            KB_update(&vm, &event);
         }
     } 
 
