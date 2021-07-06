@@ -325,7 +325,10 @@ int main(int argc, char **argv)
                         }
                         imm = label->pc;
                     }
-                    else imm = ASM_atow(identifier);
+                    else if(identifier[0] == '\'' && identifier[2] == '\'')
+                        imm = identifier[1];
+                    else
+                        imm = ASM_atow(identifier);
                     word |= 1 << 9;
                     imms[num_imms++] = imm;
                     break;
@@ -365,7 +368,10 @@ int main(int argc, char **argv)
                         }
                         imm = label->pc;
                     }
-                    else imm = ASM_atow(identifier);
+                    else if(identifier[0] == '\'' && identifier[2] == '\'')
+                        imm = identifier[1];
+                    else
+                        imm = ASM_atow(identifier);
                     word |= 1 << 4;
                     imms[num_imms++] = imm;
                     break;

@@ -1,18 +1,26 @@
 # KBtest.S - test keyboard
 mov $main, %pc
+
 handler:
-    ine $0x000F, %r0
+    ieq $0x000F, %r0
+    mov $kb_int, %pc
     rfi
-    ior $0x000F, %r0
-    ieq $0xFF01, %r0
-    mov $backspace, %pc
-    and $0x00FF, %r0
-    bor $0x0F00, %r0
-    mwr %r0, %r1
+
+kb_int:
+    ior $0x000F, %r2
+    ieq $0xFF01, %r2
+    mov $kb_backspace, %pc
+    mov %r2, %r3
+    and $0xFF00, %r3
+    ieq $0xFF00, %r3
+    rfi
+    and $0x00FF, %r2
+    bor $0x0F00, %r2
+    mwr %r2, %r1
     inc %r1
     rfi
 
-backspace:
+kb_backspace:
     dec %r1
     ilt $0x8000, %r1
     mov $0x8000, %r1

@@ -29,12 +29,22 @@ static int buffer_size;
 
 void KB_init()
 {
+    SDL_StartTextInput();
     buffer_size = 0;
 }
 
 void KB_update(V16_vm_t *vm, const SDL_Event *event)
 {
-    if(event->type == SDL_KEYUP && buffer_size < KB_BUFFER_SIZE) {
+    if(event->type == SDL_TEXTINPUT) {
+        const char *text = event->text.text;
+        while(buffer_size < KB_BUFFER_SIZE && text[0]) {
+            buffer[buffer_size++] = text++[0];
+            V16_interrupt(vm, KB_HARDWARE_ID);
+        }
+        return;
+    }
+
+    if(event->type == SDL_KEYDOWN && buffer_size < KB_BUFFER_SIZE) {
         uint16_t keyval = 0;
         switch(event->key.keysym.sym) {
             case SDLK_BACKSPACE:
@@ -70,13 +80,14 @@ void KB_update(V16_vm_t *vm, const SDL_Event *event)
             case SDLK_RCTRL:
                 keyval = KB_CHR_CTRL;
                 break;
-            default:
-                keyval = (uint16_t)(toupper(event->key.keysym.sym & 0x7F));
-                break;
         }
 
-        buffer[buffer_size++] = keyval;
-        V16_interrupt(vm, KB_HARDWARE_ID);
+        if(keyval) {
+            buffer[buffer_size++] = keyval;
+            V16_interrupt(vm, KB_HARDWARE_ID);
+        }
+
+        return;
     }
 }
 
