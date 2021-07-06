@@ -47,21 +47,6 @@ typedef enum {
     V16_OPCODE_INT = 0x0C,
     V16_OPCODE_RFI = 0x0D,
 
-    V16_OPCODE_MOV = 0x10,
-    V16_OPCODE_ADD = 0x11,
-    V16_OPCODE_SUB = 0x12,
-    V16_OPCODE_MUL = 0x13,
-    V16_OPCODE_DIV = 0x14,
-    V16_OPCODE_MOD = 0x15,
-    V16_OPCODE_SHL = 0x16,
-    V16_OPCODE_SHR = 0x17,
-    V16_OPCODE_AND = 0x18,
-    V16_OPCODE_BOR = 0x19,
-    V16_OPCODE_XOR = 0x1A,
-    V16_OPCODE_NOT = 0x1B,
-    V16_OPCODE_INC = 0x1C,
-    V16_OPCODE_DEC = 0x1D,
-
     V16_OPCODE_IEQ = 0x20,
     V16_OPCODE_INE = 0x21,
     V16_OPCODE_IGT = 0x22,
@@ -69,6 +54,20 @@ typedef enum {
     V16_OPCODE_ILT = 0x24,
     V16_OPCODE_ILE = 0x25,
 
+    V16_OPCODE_MOV = 0x30,
+    V16_OPCODE_ADD = 0x31,
+    V16_OPCODE_SUB = 0x32,
+    V16_OPCODE_MUL = 0x33,
+    V16_OPCODE_DIV = 0x34,
+    V16_OPCODE_MOD = 0x35,
+    V16_OPCODE_SHL = 0x36,
+    V16_OPCODE_SHR = 0x37,
+    V16_OPCODE_AND = 0x38,
+    V16_OPCODE_BOR = 0x39,
+    V16_OPCODE_XOR = 0x3A,
+    V16_OPCODE_NOT = 0x3B,
+    V16_OPCODE_INC = 0x3C,
+    V16_OPCODE_DEC = 0x3D
 } V16_opcode_t;
 
 typedef enum {
@@ -122,7 +121,7 @@ typedef struct V16_vm {
 
 bool V16_open(V16_vm_t *vm);
 void V16_close(V16_vm_t *vm);
-bool V16_step(V16_vm_t *vm, size_t *cycles);
+bool V16_step(V16_vm_t *vm);
 void V16_interrupt(V16_vm_t *vm, uint16_t id);
 
 #if defined(_WIN32)

@@ -68,6 +68,13 @@ static inline uint16_t ASM_opcode(const char *id)
     ASM_OPCODE_X(INT);
     ASM_OPCODE_X(RFI);
 
+    ASM_OPCODE_X(IEQ);
+    ASM_OPCODE_X(INE);
+    ASM_OPCODE_X(IGT);
+    ASM_OPCODE_X(IGE);
+    ASM_OPCODE_X(ILT);
+    ASM_OPCODE_X(ILE);
+
     ASM_OPCODE_X(MOV);
     ASM_OPCODE_X(ADD);
     ASM_OPCODE_X(SUB);
@@ -82,13 +89,6 @@ static inline uint16_t ASM_opcode(const char *id)
     ASM_OPCODE_X(NOT);
     ASM_OPCODE_X(INC);
     ASM_OPCODE_X(DEC);
-
-    ASM_OPCODE_X(IEQ);
-    ASM_OPCODE_X(INE);
-    ASM_OPCODE_X(IGT);
-    ASM_OPCODE_X(IGE);
-    ASM_OPCODE_X(ILT);
-    ASM_OPCODE_X(ILE);
 
     #undef ASM_OPCODE_X
     return UINT16_MAX;
@@ -215,14 +215,14 @@ int main(int argc, char **argv)
     size_t line_no = 0;
     char line[128] = { 0 };
     char *line_p;
-    int empty = 0, nc = 0;
+    int nc = 0;
 
     char identifier[65] = { 0 };
     char prefix = 0;
 
     uint16_t virt_pc = 0x0000;
     fseek(infile, 0, SEEK_SET);
-    while(line_p = ASM_skipComments(fgets(line, sizeof(line), infile))) {
+    while((line_p = ASM_skipComments(fgets(line, sizeof(line), infile)))) {
         if(ASM_isEmptyOrWhitespace(line_p)) {
             line_no++;
             continue;
@@ -274,7 +274,7 @@ int main(int argc, char **argv)
     nc = 0;
 
     fseek(infile, 0, SEEK_SET);
-    while(line_p = ASM_skipComments(fgets(line, sizeof(line), infile))) {
+    while((line_p = ASM_skipComments(fgets(line, sizeof(line), infile)))) {
         if(ASM_isEmptyOrWhitespace(line_p)) {
             line_no++;
             continue;

@@ -47,6 +47,13 @@ static const char *DASM_mnemonic(unsigned int id)
     DASM_MNEMONIC_X(INT);
     DASM_MNEMONIC_X(RFI);
 
+    DASM_MNEMONIC_X(IEQ);
+    DASM_MNEMONIC_X(INE);
+    DASM_MNEMONIC_X(IGT);
+    DASM_MNEMONIC_X(IGE);
+    DASM_MNEMONIC_X(ILT);
+    DASM_MNEMONIC_X(ILE);
+
     DASM_MNEMONIC_X(MOV);
     DASM_MNEMONIC_X(ADD);
     DASM_MNEMONIC_X(SUB);
@@ -61,13 +68,6 @@ static const char *DASM_mnemonic(unsigned int id)
     DASM_MNEMONIC_X(NOT);
     DASM_MNEMONIC_X(INC);
     DASM_MNEMONIC_X(DEC);
-
-    DASM_MNEMONIC_X(IEQ);
-    DASM_MNEMONIC_X(INE);
-    DASM_MNEMONIC_X(IGT);
-    DASM_MNEMONIC_X(IGE);
-    DASM_MNEMONIC_X(ILT);
-    DASM_MNEMONIC_X(ILE);
 
     #undef DASM_MNEMONIC_X
     return "???";
@@ -169,7 +169,7 @@ int main(int argc, char **argv)
     uint16_t *memory = malloc(sizeof(uint16_t) * V16_MEM_SIZE);
 
     fseek(infile, 0, SEEK_END);
-    long size = ftell(infile) / sizeof(uint16_t);
+    size_t size = ftell(infile) / sizeof(uint16_t);
     fseek(infile, 0, SEEK_SET);
 
     if(size > V16_MEM_SIZE)

@@ -1,0 +1,6 @@
+function(target_enable_warnings target)
+    if(NOT MSVC)
+        target_compile_options(${target} PRIVATE -Wall)
+        target_compile_options(${target} PRIVATE -Wextra)
+    endif()
+endfunction()

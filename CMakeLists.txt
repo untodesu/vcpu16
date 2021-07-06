@@ -4,9 +4,14 @@ project(v16 LANGUAGES C VERSION 0.0.1)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
+include(CommonV16)
+
 add_library(v16 STATIC
     "${CMAKE_CURRENT_LIST_DIR}/V16.c"
     "${CMAKE_CURRENT_LIST_DIR}/V16.h")
+target_enable_warnings(v16)
 target_include_directories(v16 PUBLIC "${CMAKE_CURRENT_LIST_DIR}")
 
 option(BUILD_ASM "Build assembler" ON)

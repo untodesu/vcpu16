@@ -104,8 +104,6 @@ int main(int argc, char **argv)
     float frequency = (float)SDL_GetPerformanceFrequency();
     Uint64 lasttime = SDL_GetPerformanceCounter();
     Uint32 fps = (Uint32)(1000.0f / (float)LPM25_FPS);
-    size_t cycles;
-
     for(int running = 1, rendering = 1; running;) {
         Uint64 curtime = SDL_GetPerformanceCounter();
         float frametime = (float)(curtime - lasttime) / frequency;
@@ -113,9 +111,9 @@ int main(int argc, char **argv)
 
         cpu_clock += frametime;
         while(cpu_clock >= cpu_step) {
-            if(!V16_step(&vm, &cycles))
+            if(!V16_step(&vm))
                 running = 0;
-            cpu_clock -= cpu_step * (float)cycles;
+            cpu_clock -= cpu_step;
         }
 
         if(rendering) {

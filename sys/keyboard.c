@@ -93,8 +93,12 @@ void KB_update(V16_vm_t *vm, const SDL_Event *event)
 
 bool KB_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
 {
+    (void)(vm);
+
     if(port == KB_IOPORT && buffer_size > 0) {
         value[0] = buffer[--buffer_size];
         return true;
     }
+
+    return false;
 }

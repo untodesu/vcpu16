@@ -129,6 +129,8 @@ void LPM25_render(SDL_Renderer *renderer, const V16_vm_t *vm)
 
 bool LPM25_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
 {
+    (void)(vm);
+
     switch(port) {
         case LPM25_IOPORT_TEXT:
             value[0] = text_off;
@@ -143,6 +145,8 @@ bool LPM25_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
 
 void LPM25_iowrite(V16_vm_t *vm, uint16_t port, uint16_t value)
 {
+    (void)(vm);
+    
     switch(port) {
         case LPM25_IOPORT_TEXT:
             text_off = value;

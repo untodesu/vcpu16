@@ -31,9 +31,8 @@ typedef struct V16_instruction_internal {
     uint16_t bv, *bp;
 } V16_instruction_internal_t;
 
-static inline size_t V16_parse(V16_vm_t *vm, V16_instruction_internal_t *instr)
+static inline void V16_parse(V16_vm_t *vm, V16_instruction_internal_t *instr)
 {
-    size_t cycles = 1;
     uint16_t word = vm->memory[vm->regs[V16_REGISTER_PC]++];
 
     instr->info.opcode = (word >> 10) & 0x3F;
@@ -44,7 +43,6 @@ static inline size_t V16_parse(V16_vm_t *vm, V16_instruction_internal_t *instr)
 
     // "A" operand
     if(instr->info.a_imm) {
-        cycles++;
         instr->ap = NULL;
         instr->av = vm->memory[vm->regs[V16_REGISTER_PC]++];
     }
@@ -55,7 +53,6 @@ static inline size_t V16_parse(V16_vm_t *vm, V16_instruction_internal_t *instr)
 
     // "B" operand
     if(instr->info.b_imm) {
-        cycles++;
         instr->bp = NULL;
         instr->bv = vm->memory[vm->regs[V16_REGISTER_PC]++];
     }
@@ -63,8 +60,6 @@ static inline size_t V16_parse(V16_vm_t *vm, V16_instruction_internal_t *instr)
         instr->bp = vm->regs + instr->info.b_reg;
         instr->bv = instr->bp[0];
     }
-
-    return cycles;
 }
 
 static inline void V16_set(V16_vm_t *vm, uint32_t value, uint16_t *dest)
@@ -99,7 +94,7 @@ void V16_close(V16_vm_t *vm)
     memset(vm, 0, sizeof(V16_vm_t));
 }
 
-bool V16_step(V16_vm_t *vm, size_t *cycles)
+bool V16_step(V16_vm_t *vm)
 {
     if(vm->halt)
         return vm->intqueue.enabled;
@@ -114,7 +109,7 @@ bool V16_step(V16_vm_t *vm, size_t *cycles)
 
     uint16_t ioread_temp = 0;
     V16_instruction_internal_t instr;
-    cycles[0] = V16_parse(vm, &instr);
+    V16_parse(vm, &instr);
 
     switch(instr.info.opcode) {
         case V16_OPCODE_NOP:
@@ -135,7 +130,7 @@ bool V16_step(V16_vm_t *vm, size_t *cycles)
             vm->regs[V16_REGISTER_PC] = instr.av;
             return true;
         case V16_OPCODE_RET:
-            vm->regs[V16_REGISTER_PC] = vm->memory[++vm->regs[V16_REGISTER_PC]];
+            vm->regs[V16_REGISTER_PC] = vm->memory[++vm->regs[V16_REGISTER_SP]];
             return true;
         case V16_OPCODE_IOR:
             if(vm->ioread && vm->ioread(vm, instr.av, &ioread_temp))
@@ -164,6 +159,31 @@ bool V16_step(V16_vm_t *vm, size_t *cycles)
             vm->regs[V16_REGISTER_R0] = vm->memory[++vm->regs[V16_REGISTER_SP]];
             vm->regs[V16_REGISTER_PC] = vm->memory[++vm->regs[V16_REGISTER_SP]];
             vm->intqueue.busy = false;
+            return true;
+        
+        case V16_OPCODE_IEQ:
+            if(!(instr.bv == instr.av))
+                V16_parse(vm, &instr);
+            return true;
+        case V16_OPCODE_INE:
+            if(!(instr.bv != instr.av))
+                V16_parse(vm, &instr);
+            return true;
+        case V16_OPCODE_IGT:
+            if(!(instr.bv > instr.av))
+                V16_parse(vm, &instr);
+            return true;
+        case V16_OPCODE_IGE:
+            if(!(instr.bv >= instr.av))
+                V16_parse(vm, &instr);
+            return true;
+        case V16_OPCODE_ILT:
+            if(!(instr.bv < instr.av))
+                V16_parse(vm, &instr);
+            return true;
+        case V16_OPCODE_ILE:
+            if(!(instr.bv <= instr.av))
+                V16_parse(vm, &instr);
             return true;
         
         case V16_OPCODE_MOV:
@@ -207,31 +227,6 @@ bool V16_step(V16_vm_t *vm, size_t *cycles)
             return true;
         case V16_OPCODE_DEC:
             V16_set(vm, instr.av - 1, instr.ap);
-            return true;
-        
-        case V16_OPCODE_IEQ:
-            if(!(instr.bv == instr.av))
-                V16_parse(vm, &instr);
-            return true;
-        case V16_OPCODE_INE:
-            if(!(instr.bv != instr.av))
-                V16_parse(vm, &instr);
-            return true;
-        case V16_OPCODE_IGT:
-            if(!(instr.bv > instr.av))
-                V16_parse(vm, &instr);
-            return true;
-        case V16_OPCODE_IGE:
-            if(!(instr.bv >= instr.av))
-                V16_parse(vm, &instr);
-            return true;
-        case V16_OPCODE_ILT:
-            if(!(instr.bv < instr.av))
-                V16_parse(vm, &instr);
-            return true;
-        case V16_OPCODE_ILE:
-            if(!(instr.bv <= instr.av))
-                V16_parse(vm, &instr);
             return true;
     }
 

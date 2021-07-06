@@ -54,15 +54,6 @@ static const char *EXEC_register(uint16_t id)
     return "??";
 }
 
-static void EXEC_dumpMemory(FILE *fp, const V16_vm_t *vm, uint16_t begin, uint16_t end, int grad)
-{
-    for(uint16_t i = begin; i < end; i++) {
-        fprintf(fp, "%04X ", vm->memory[i]);
-        if(!((i + 1) % grad))
-            fprintf(fp, "\n");
-    }
-}
-
 static void lprintf(const char *fmt, ...)
 {
     va_list ap;
@@ -73,6 +64,8 @@ static void lprintf(const char *fmt, ...)
 
 static bool EXEC_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
 {
+    (void)(vm);
+
     if(port == 0x00FF) {
         value[0] = (uint16_t)fgetc(stdin);
         return true;
@@ -83,6 +76,8 @@ static bool EXEC_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
 
 static void EXEC_iowrite(V16_vm_t *vm, uint16_t port, uint16_t value)
 {
+    (void)(vm);
+    
     if(port == 0x00FF) {
         fputc(value & 0xFF, stdout);
         return;
@@ -144,9 +139,8 @@ int main(int argc, char **argv)
     for(size_t i = 0; i < V16_MEM_SIZE; i++)
         vm.memory[i] = V16_BE16ToHost(vm.memory[i]);
 
-    size_t cycles;
     clock_t starttime = clock();
-    while(V16_step(&vm, &cycles)) {
+    while(V16_step(&vm)) {
         if(maxtime) {
             clock_t curtime = clock();
             if((curtime - starttime) / CLOCKS_PER_SEC >= maxtime) {
