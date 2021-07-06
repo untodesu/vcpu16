@@ -307,6 +307,7 @@ int main(int argc, char **argv)
 
         do {
             uint16_t imm = 0;
+            const ASM_label_t *label;
 
             if(sscanf(line_p, " %c%n", &prefix, &nc) != 1)
                 break;
@@ -318,7 +319,6 @@ int main(int argc, char **argv)
 
             switch(prefix) {
                 case '$':
-                    const ASM_label_t *label;
                     if(isalpha(identifier[0])) {
                         if(!(label = ASM_findLabel(identifier, labels, num_lines))) {
                             lprintf("%s: error[%zu]: unknown label '%s'\n", argv[0], line_no, identifier);
@@ -360,7 +360,6 @@ int main(int argc, char **argv)
 
             switch(prefix) {
                 case '$':
-                    const ASM_label_t *label;
                     if(isalpha(identifier[0])) {
                         if(!(label = ASM_findLabel(identifier, labels, num_lines))) {
                             lprintf("%s: error[%zu]: unknown label '%s'\n", argv[0], line_no, identifier);
