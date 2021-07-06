@@ -144,8 +144,9 @@ int main(int argc, char **argv)
     for(size_t i = 0; i < V16_MEM_SIZE; i++)
         vm.memory[i] = V16_BE16ToHost(vm.memory[i]);
 
+    size_t cycles;
     clock_t starttime = clock();
-    while(V16_step(&vm)) {
+    while(V16_step(&vm, &cycles)) {
         if(maxtime) {
             clock_t curtime = clock();
             if((curtime - starttime) / CLOCKS_PER_SEC >= maxtime) {

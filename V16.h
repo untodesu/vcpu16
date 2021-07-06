@@ -28,7 +28,7 @@
 #include <stdint.h>
 
 #define V16_MEM_SIZE        (0x10000)
-#define V16_FREQUENCY       (3000000)
+#define V16_FREQUENCY       (100000)
 #define V16_MAX_INTERRUPTS  (256)
 
 typedef enum {
@@ -122,7 +122,7 @@ typedef struct V16_vm {
 
 bool V16_open(V16_vm_t *vm);
 void V16_close(V16_vm_t *vm);
-bool V16_step(V16_vm_t *vm);
+bool V16_step(V16_vm_t *vm, size_t *cycles);
 void V16_interrupt(V16_vm_t *vm, uint16_t id);
 
 #if defined(_WIN32)

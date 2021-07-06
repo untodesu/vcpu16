@@ -31,8 +31,9 @@ typedef struct V16_instruction_internal {
     uint16_t bv, *bp;
 } V16_instruction_internal_t;
 
-static inline void V16_parse(V16_vm_t *vm, V16_instruction_internal_t *instr)
+static inline size_t V16_parse(V16_vm_t *vm, V16_instruction_internal_t *instr)
 {
+    size_t cycles = 1;
     uint16_t word = vm->memory[vm->regs[V16_REGISTER_PC]++];
 
     instr->info.opcode = (word >> 10) & 0x3F;
@@ -43,6 +44,7 @@ static inline void V16_parse(V16_vm_t *vm, V16_instruction_internal_t *instr)
 
     // "A" operand
     if(instr->info.a_imm) {
+        cycles++;
         instr->ap = NULL;
         instr->av = vm->memory[vm->regs[V16_REGISTER_PC]++];
     }
@@ -53,6 +55,7 @@ static inline void V16_parse(V16_vm_t *vm, V16_instruction_internal_t *instr)
 
     // "B" operand
     if(instr->info.b_imm) {
+        cycles++;
         instr->bp = NULL;
         instr->bv = vm->memory[vm->regs[V16_REGISTER_PC]++];
     }
@@ -60,6 +63,8 @@ static inline void V16_parse(V16_vm_t *vm, V16_instruction_internal_t *instr)
         instr->bp = vm->regs + instr->info.b_reg;
         instr->bv = instr->bp[0];
     }
+
+    return cycles;
 }
 
 static inline void V16_set(V16_vm_t *vm, uint32_t value, uint16_t *dest)
@@ -94,7 +99,7 @@ void V16_close(V16_vm_t *vm)
     memset(vm, 0, sizeof(V16_vm_t));
 }
 
-bool V16_step(V16_vm_t *vm)
+bool V16_step(V16_vm_t *vm, size_t *cycles)
 {
     if(vm->halt)
         return vm->intqueue.enabled;
@@ -109,7 +114,7 @@ bool V16_step(V16_vm_t *vm)
 
     uint16_t ioread_temp = 0;
     V16_instruction_internal_t instr;
-    V16_parse(vm, &instr);
+    cycles[0] = V16_parse(vm, &instr);
 
     switch(instr.info.opcode) {
         case V16_OPCODE_NOP:
