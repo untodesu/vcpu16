@@ -21,7 +21,7 @@ kb_int:
     ieq $0xFF00, %r2
     rfi
     and $0x00FF, %r0
-    bor $0x0E00, %r0
+    bor $0x0F00, %r0
     mov %r1, %r2
     add $0x8000, %r1
     mwr %r0, %r1
