@@ -26,14 +26,16 @@
 #include <SDL2/SDL.h>
 #include <V16.h>
 
-#define LPM26_HARDWARE_ID   (0x1F25)
-#define LPM25_WIDTH         (80)
-#define LPM25_HEIGHT        (25)
-#define LPM25_CH_WIDTH      (4)
-#define LPM25_CH_HEIGHT     (8)
-#define LPM25_FPS           (50)
-#define LPM25_IOPORT_TEXT   (0x1F01)
-#define LPM25_IOPORT_CHAR   (0x1F02)
+#define LPM26_HARDWARE_ID       (0x1F25)
+#define LPM25_WIDTH             (80)
+#define LPM25_HEIGHT            (25)
+#define LPM25_CH_WIDTH          (4)
+#define LPM25_CH_HEIGHT         (8)
+#define LPM25_FPS               (50)
+#define LPM25_IOPORT_TEXT_OFF   (0x1F01)
+#define LPM25_IOPORT_CHAR_OFF   (0x1F02)
+#define LPM25_IOPORT_CUR_POS    (0x1F03)
+#define LPM25_IOPORT_CUR_BLINK  (0x1F04)
 
 void LPM25_init(SDL_Renderer *renderer, V16_vm_t *vm);
 void LPM25_shutdown();

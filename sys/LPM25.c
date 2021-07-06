@@ -24,10 +24,14 @@
 #include <string.h>
 #include "LPM25.h"
 
-#define LPM25_DEFAULT_TEXT (0x8000)
-#define LPM25_DEFAULT_CHAR (0x8A00)
+typedef struct LPM25_cusror {
+    uint16_t pos;
+    uint16_t blink;
+    bool visible;
+    Uint32 last_swap;
+} LPM25_cusror_t;
 
-static const uint16_t charset[128 * sizeof(uint16_t)] = {
+static const uint16_t charset[128 * 2] = {
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
@@ -37,8 +41,8 @@ static const uint16_t charset[128 * sizeof(uint16_t)] = {
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
 
-    0x0000, 0x0000, 0x0888, 0x8808, 0x0AA0, 0x0000, 0x00AE, 0xAEA0,
-    0x04E8, 0xE2E4, 0x0A24, 0x448A, 0x04A8, 0x4AA4, 0x0440, 0x0000,
+    0x0000, 0x0000, 0x0444, 0x4404, 0x00AA, 0x0000, 0x00AE, 0xAEA0,
+    0x04E8, 0xE2E4, 0x0A24, 0x448A, 0x04A8, 0x4AA4, 0x0044, 0x0000,
     0x0244, 0x4442, 0x0844, 0x4448, 0x000A, 0x4A00, 0x0004, 0xE400,
     0x0000, 0x0044, 0x0000, 0xE000, 0x0000, 0x0004, 0x0222, 0x4444,
 
@@ -76,6 +80,7 @@ static const uint16_t charset[128 * sizeof(uint16_t)] = {
 static SDL_Texture *texture = NULL;
 static uint16_t text_off = 0;
 static uint16_t char_off = 0;
+static LPM25_cusror_t cursor;
 
 static inline void LPM25_unpackColor(uint8_t value, SDL_Color *c)
 {
@@ -85,11 +90,22 @@ static inline void LPM25_unpackColor(uint8_t value, SDL_Color *c)
     c->b = ((value >> 1) & 1) ? cv : 0;
 }
 
+static inline void LPM25_invertColor(SDL_Color *c)
+{
+    c->r = (255 - c->r);
+    c->g = (255 - c->g);
+    c->b = (255 - c->b);
+}
+
 void LPM25_init(SDL_Renderer *renderer, V16_vm_t *vm)
 {
     texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_TARGET, LPM25_WIDTH * LPM25_CH_WIDTH, LPM25_HEIGHT * LPM25_CH_HEIGHT);
-    text_off = LPM25_DEFAULT_TEXT;
-    char_off = LPM25_DEFAULT_CHAR;
+    text_off = 0x8000;
+    char_off = 0x8A00;
+    cursor.pos = 0;
+    cursor.blink = 500;
+    cursor.visible = true;
+    cursor.last_swap = SDL_GetTicks();
     memcpy(vm->memory + char_off, charset, sizeof(charset));
 }
 
@@ -100,15 +116,27 @@ void LPM25_shutdown()
 
 void LPM25_render(SDL_Renderer *renderer, const V16_vm_t *vm)
 {
+    Uint32 ticks = SDL_GetTicks();
+    if(cursor.blink && ((ticks - cursor.last_swap) > (Uint32)cursor.blink)) {
+        cursor.visible = !cursor.visible;
+        cursor.last_swap = ticks;
+    }
+
     SDL_SetRenderTarget(renderer, texture);
     for(int i = 0; i < LPM25_HEIGHT; i++) {
         for(int j = 0; j < LPM25_WIDTH; j++) {
-            uint16_t word = vm->memory[text_off + i * LPM25_WIDTH + j];
+            uint16_t pos = i * LPM25_WIDTH + j;
+            uint16_t word = vm->memory[text_off + pos];
             const uint16_t *chp = vm->memory + char_off + (word & 0xFF) * 2;
 
             SDL_Color bg, fg;
             LPM25_unpackColor((word >> 12) & 0x0F, &bg);
             LPM25_unpackColor((word >> 8) & 0x0F, &fg);
+
+            if(pos == cursor.pos && cursor.visible) {
+                LPM25_invertColor(&bg);
+                LPM25_invertColor(&fg);
+            }
 
             uint32_t chv = (chp[0] << 16) | chp[1];
             for(int y = 0; y < LPM25_CH_HEIGHT; y++) {
@@ -132,11 +160,17 @@ bool LPM25_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
     (void)(vm);
 
     switch(port) {
-        case LPM25_IOPORT_TEXT:
+        case LPM25_IOPORT_TEXT_OFF:
             value[0] = text_off;
             return true;
-        case LPM25_IOPORT_CHAR:
+        case LPM25_IOPORT_CHAR_OFF:
             value[0] = char_off;
+            return true;
+        case LPM25_IOPORT_CUR_POS:
+            value[0] = cursor.pos;
+            return true;
+        case LPM25_IOPORT_CUR_BLINK:
+            value[0] = cursor.blink;
             return true;
     }
 
@@ -148,11 +182,18 @@ void LPM25_iowrite(V16_vm_t *vm, uint16_t port, uint16_t value)
     (void)(vm);
     
     switch(port) {
-        case LPM25_IOPORT_TEXT:
+        case LPM25_IOPORT_TEXT_OFF:
             text_off = value;
             return;
-        case LPM25_IOPORT_CHAR:
+        case LPM25_IOPORT_CHAR_OFF:
             char_off = value;
+            return;
+        case LPM25_IOPORT_CUR_POS:
+            cursor.pos = value;
+            return;
+        case LPM25_IOPORT_CUR_BLINK:
+            cursor.blink = value;
+            cursor.visible = !!value;
             return;
     }
 }

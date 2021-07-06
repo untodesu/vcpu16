@@ -1,5 +1,10 @@
 # KBtest.S - test keyboard
-mov $main, %pc
+start:
+    mov $handler, %ia
+    sti
+loop:
+    hlt
+    mov $loop, %pc
 
 handler:
     ieq $0x000F, %r0
@@ -7,30 +12,29 @@ handler:
     rfi
 
 kb_int:
-    ior $0x000F, %r2
-    ieq $0xFF01, %r2
+    ior $0x000F, %r0
+    ior $0x1F03, %r1
+    ieq $0xFF01, %r0
     mov $kb_backspace, %pc
-    mov %r2, %r3
-    and $0xFF00, %r3
-    ieq $0xFF00, %r3
+    mov %r0, %r2
+    and $0xFF00, %r2
+    ieq $0xFF00, %r2
     rfi
-    and $0x00FF, %r2
-    bor $0x0F00, %r2
-    mwr %r2, %r1
-    inc %r1
+    and $0x00FF, %r0
+    bor $0x0E00, %r0
+    mov %r1, %r2
+    add $0x8000, %r1
+    mwr %r0, %r1
+    inc %r2
+    iow %r2, $0x1F03
     rfi
 
 kb_backspace:
-    dec %r1
-    ilt $0x8000, %r1
-    mov $0x8000, %r1
-    mwr $0x0000, %r1
+    ieq $0, %r1
     rfi
-
-main:
-    mov $0x8000, %r1
-    mov $handler, %ia
-    sti
-end:
-    hlt
-    mov $end, %pc
+    dec %r1
+    mov %r1, %r2
+    add $0x8000, %r1
+    mwr $0x0000, %r1
+    iow %r2, $0x1F03
+    rfi
