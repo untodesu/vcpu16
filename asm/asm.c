@@ -306,6 +306,8 @@ int main(int argc, char **argv)
         size_t num_imms = 0;
 
         do {
+            uint16_t imm = 0;
+
             if(sscanf(line_p, " %c%n", &prefix, &nc) != 1)
                 break;
             line_p += nc;
@@ -316,7 +318,6 @@ int main(int argc, char **argv)
 
             switch(prefix) {
                 case '$':
-                    uint16_t imm = 0;
                     const ASM_label_t *label;
                     if(isalpha(identifier[0])) {
                         if(!(label = ASM_findLabel(identifier, labels, num_lines))) {
@@ -359,7 +360,6 @@ int main(int argc, char **argv)
 
             switch(prefix) {
                 case '$':
-                    uint16_t imm = 0;
                     const ASM_label_t *label;
                     if(isalpha(identifier[0])) {
                         if(!(label = ASM_findLabel(identifier, labels, num_lines))) {
