@@ -132,10 +132,10 @@ int main(int argc, char **argv)
 {
     FILE *infile = NULL;
     size_t begin = 0x0000, end = V16_MEM_SIZE;
-    int offsets = 0, words = 0;
+    int offsets = 0, words = 0, quiet = 0;
 
     int r;
-    while((r = getopt(argc, argv, "b:e:OWh")) != EOF) {
+    while((r = getopt(argc, argv, "b:e:OWQh")) != EOF) {
         switch(r) {
             case 'b':
                 begin = (uint16_t)strtol(optarg, NULL, 16);
@@ -149,20 +149,31 @@ int main(int argc, char **argv)
             case 'W':
                 words = 1;
                 break;
+            case 'Q':
+                quiet = 1;
+                break;
             default:
                 lprintf("Usage: V16DASM [-b <hexaddr>] [-e <hexaddr>] [-O] [-W] [-h] <infile>\n");
+                lprintf("Options:\n");
+                lprintf("   -b <hexaddr>    : Set the begining offset.\n");
+                lprintf("   -e <hexaddr>    : Set the ending offset.\n");
+                lprintf("   -O              : Write offsets.\n");
+                lprintf("   -W              : Write instruction words.\n");
+                lprintf("   -Q              : Don't write the banner (quiet)\n");
+                lprintf("   -h              : Write this message and exit.\n");
+                lprintf("   <infile>        : Input binary (ROM).\n");
                 return 1;
         }
     }
     
     if(optind >= argc) {
-        lprintf("V16DASM: fatal: infile is null!\n");
+        lprintf("V16DASM: fatal: no input files.\n");
         return 1;
     }
 
     infile = fopen(argv[optind], "rb");
     if(!infile) {
-        lprintf("V16DASM: fatal: infile is null!\n");
+        lprintf("V16DASM: fatal: unable to open %s.\n", argv[optind]);
         return 1;
     }
 
@@ -185,8 +196,10 @@ int main(int argc, char **argv)
     for(size_t i = 0; i < V16_MEM_SIZE; i++)
         memory[i] = V16_BE16ToHost(memory[i]);
 
-    fprintf(stdout, "%c V16 disassembler (V16DASM)\n", (offsets || words) ? ' ' : '#');
-    fprintf(stdout, "%c source file: %s\n", (offsets || words) ? ' ' : '#', argv[optind]);
+    if(!quiet) {
+        fprintf(stdout, "%c V16 disassembler (V16DASM)\n", (offsets || words) ? ' ' : '#');
+        fprintf(stdout, "%c source file: %s\n", (offsets || words) ? ' ' : '#', argv[optind]);
+    }
 
     for(size_t i = begin; i < end; i++) {
         uint16_t addr = (uint16_t)i;

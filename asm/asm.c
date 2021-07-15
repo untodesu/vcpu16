@@ -172,31 +172,40 @@ int main(int argc, char **argv)
 {
     FILE *infile = NULL;
     FILE *outfile = NULL;
+    bool aout = true;
 
     int r;
     while((r = getopt(argc, argv, "o:h")) != EOF) {
         switch(r) {
             case 'o':
-                outfile = ASM_stricmp(optarg, "stdout") ? fopen(optarg, "wb") : stdout;
+                outfile = fopen(optarg, "wb");
+                aout = false;
                 break;
             default:
-                lprintf("Usage: %s [-o <outfile|stdout>] [-h] <infile>\n", argv[0]);
+                lprintf("Usage: %s [-o <outfile>] [-h] <infile>\n", argv[0]);
+                lprintf("Options:\n");
+                lprintf("   -o <outfile>    : Set the output file\n");
+                lprintf("   -h              : Print this message and exit\n");
+                lprintf("   <infile>        : Input source file\n");
                 return 1;
         }
     }
 
     if(!infile) {
         if(optind >= argc) {
-            lprintf("%s: fatal: infile is null!\n", argv[0]);
+            lprintf("%s: fatal: no input files.\n", argv[0]);
             return 1;
         }
 
         infile = fopen(argv[optind], "rb");
         if(!infile) {
-            lprintf("%s: fatal: infile is null!\n", argv[0]);
+            lprintf("%s: fatal: unable to open %s.\n", argv[0], argv[optind]);
             return 1;
         }
     }
+
+    if(aout && !outfile)
+        outfile = fopen("a.out", "wb");
 
     if(!outfile) {
         lprintf("%s: fatal: outfile is null!\n", argv[0]);
