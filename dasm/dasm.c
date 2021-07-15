@@ -153,7 +153,7 @@ int main(int argc, char **argv)
                 quiet = 1;
                 break;
             default:
-                lprintf("Usage: V16DASM [-b <hexaddr>] [-e <hexaddr>] [-O] [-W] [-h] <infile>\n");
+                lprintf("Usage: %s [-b <hexaddr>] [-e <hexaddr>] [-O] [-W] [-h] <infile>\n", argv[0]);
                 lprintf("Options:\n");
                 lprintf("   -b <hexaddr>    : Set the begining offset.\n");
                 lprintf("   -e <hexaddr>    : Set the ending offset.\n");
@@ -167,13 +167,13 @@ int main(int argc, char **argv)
     }
     
     if(optind >= argc) {
-        lprintf("V16DASM: fatal: no input files.\n");
+        lprintf("%s: fatal: no input files.\n", argv[0]);
         return 1;
     }
 
     infile = fopen(argv[optind], "rb");
     if(!infile) {
-        lprintf("V16DASM: fatal: unable to open %s.\n", argv[optind]);
+        lprintf("%s: fatal: unable to open %s.\n", argv[0], argv[optind]);
         return 1;
     }
 
