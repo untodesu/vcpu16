@@ -1,5 +1,5 @@
 # ASCIItest.S - prints the ASCII table
-# in seven colors, than freezes.
+# in seven colors, then freezes.
 mov $0x8000, %r0
 mov $0x0800, %r1
 loop:
