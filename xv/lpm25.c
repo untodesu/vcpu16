@@ -1,37 +1,14 @@
-// Copyright (c) 2021, Kirill GPRB
-// All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this
-//    list of conditions and the following disclaimer.
-// 
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-//    this list of conditions and the following disclaimer in the documentation
-//    and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
-// FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-// SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-// OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <string.h>
-#include "LPM25.h"
+#include "lpm25.h"
 
-typedef struct LPM25_cusror {
-    uint16_t pos;
-    uint16_t blink;
-    bool visible;
+struct lpm_cursor {
+    unsigned short pos;
+    unsigned short blink;
+    int visible;
     Uint32 last_swap;
-} LPM25_cusror_t;
+};
 
-static const uint16_t charset[128 * 2] = {
+static const unsigned short charset[128 * 2] = {
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000,
@@ -78,11 +55,11 @@ static const uint16_t charset[128 * 2] = {
 };
 
 static SDL_Texture *texture = NULL;
-static uint16_t text_off = 0;
-static uint16_t char_off = 0;
-static LPM25_cusror_t cursor;
+static unsigned short text_off = 0;
+static unsigned short char_off = 0;
+static struct lpm_cursor cursor;
 
-static inline void LPM25_unpackColor(uint8_t value, SDL_Color *c)
+static inline void unpack_color(uint8_t value, SDL_Color *c)
 {
     Uint8 cv = (value & 1) ? 255 : 180;
     c->r = ((value >> 3) & 1) ? cv : 0;
@@ -90,58 +67,66 @@ static inline void LPM25_unpackColor(uint8_t value, SDL_Color *c)
     c->b = ((value >> 1) & 1) ? cv : 0;
 }
 
-static inline void LPM25_invertColor(SDL_Color *c)
+static inline void invert_color(SDL_Color *c)
 {
     c->r = (255 - c->r);
     c->g = (255 - c->g);
     c->b = (255 - c->b);
 }
 
-void LPM25_init(SDL_Renderer *renderer, V16_vm_t *vm)
+void init_lpm25(SDL_Renderer *renderer, struct vcpu *cpu)
 {
     texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_TARGET, LPM25_WIDTH * LPM25_CH_WIDTH, LPM25_HEIGHT * LPM25_CH_HEIGHT);
     text_off = 0x8000;
     char_off = 0x8A00;
     cursor.pos = 0;
     cursor.blink = 500;
-    cursor.visible = true;
+    cursor.visible = 1;
     cursor.last_swap = SDL_GetTicks();
-    memcpy(vm->memory + char_off, charset, sizeof(charset));
+    memcpy((*cpu->memory) + char_off, charset, sizeof(charset));
 }
 
-void LPM25_shutdown()
+void shutdown_lpm25()
 {
     SDL_DestroyTexture(texture);
 }
 
-void LPM25_render(SDL_Renderer *renderer, const V16_vm_t *vm)
+void lpm25_render(SDL_Renderer *renderer, const struct vcpu *cpu)
 {
-    Uint32 ticks = SDL_GetTicks();
+    Uint32 ticks;
+    SDL_Color bg, fg;
+    unsigned int chv;
+    int i, j;
+    unsigned short pos, word;
+    const unsigned short *chp;
+    unsigned char row;
+    int y, x;
+    
+    ticks = SDL_GetTicks();
     if(cursor.blink && ((ticks - cursor.last_swap) > (Uint32)cursor.blink)) {
         cursor.visible = !cursor.visible;
         cursor.last_swap = ticks;
     }
 
     SDL_SetRenderTarget(renderer, texture);
-    for(int i = 0; i < LPM25_HEIGHT; i++) {
-        for(int j = 0; j < LPM25_WIDTH; j++) {
-            uint16_t pos = i * LPM25_WIDTH + j;
-            uint16_t word = vm->memory[text_off + pos];
-            const uint16_t *chp = vm->memory + char_off + (word & 0xFF) * 2;
+    for(i = 0; i < LPM25_HEIGHT; i++) {
+        for(j = 0; j < LPM25_WIDTH; j++) {
+            pos = i * LPM25_WIDTH + j;
+            word = (*cpu->memory)[text_off + pos];
+            chp = (*cpu->memory) + char_off + (word & 0xFF) * 2;
 
-            SDL_Color bg, fg;
-            LPM25_unpackColor((word >> 12) & 0x0F, &bg);
-            LPM25_unpackColor((word >> 8) & 0x0F, &fg);
+            unpack_color((word >> 12) & 0x0F, &bg);
+            unpack_color((word >> 8) & 0x0F, &fg);
 
             if(pos == cursor.pos && cursor.visible) {
-                LPM25_invertColor(&bg);
-                LPM25_invertColor(&fg);
+                invert_color(&bg);
+                invert_color(&fg);
             }
 
-            uint32_t chv = (chp[0] << 16) | chp[1];
-            for(int y = 0; y < LPM25_CH_HEIGHT; y++) {
-                uint8_t row = (chv >> (32 - (LPM25_CH_WIDTH * (y + 1)))) & 0x0F;
-                for(int x = 0; x < LPM25_CH_WIDTH; x++) {
+            chv = (chp[0] << 16) | chp[1];
+            for(y = 0; y < LPM25_CH_HEIGHT; y++) {
+                row = (chv >> (32 - (LPM25_CH_WIDTH * (y + 1)))) & 0x0F;
+                for(x = 0; x < LPM25_CH_WIDTH; x++) {
                     if((row >> (LPM25_CH_WIDTH - x - 1)) & 1)
                         SDL_SetRenderDrawColor(renderer, fg.r, fg.g, fg.b, 255);
                     else
@@ -155,32 +140,26 @@ void LPM25_render(SDL_Renderer *renderer, const V16_vm_t *vm)
     SDL_RenderCopy(renderer, texture, NULL, NULL);
 }
 
-bool LPM25_ioread(V16_vm_t *vm, uint16_t port, uint16_t *value)
+void lpm25_ioread(struct vcpu *cpu, unsigned short port, unsigned short *value)
 {
-    (void)(vm);
-
     switch(port) {
         case LPM25_IOPORT_TEXT_OFF:
-            value[0] = text_off;
-            return true;
+            *value = text_off;
+            break;
         case LPM25_IOPORT_CHAR_OFF:
-            value[0] = char_off;
-            return true;
+            *value = char_off;
+            break;
         case LPM25_IOPORT_CUR_POS:
-            value[0] = cursor.pos;
-            return true;
+            *value = cursor.pos;
+            break;
         case LPM25_IOPORT_CUR_BLINK:
-            value[0] = cursor.blink;
-            return true;
+            *value = cursor.blink;
+            break;
     }
-
-    return false;
 }
 
-void LPM25_iowrite(V16_vm_t *vm, uint16_t port, uint16_t value)
+void lpm25_iowrite(struct vcpu *cpu, unsigned short port, unsigned short value)
 {
-    (void)(vm);
-    
     switch(port) {
         case LPM25_IOPORT_TEXT_OFF:
             text_off = value;

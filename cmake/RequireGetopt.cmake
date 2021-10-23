@@ -1,0 +1,5 @@
+include(CheckIncludeFile)
+CHECK_INCLUDE_FILE(getopt.h GETOPT_H_FOUND)
+if(NOT GETOPT_H_FOUND)
+    message(FATAL_ERROR "No getopt.h found in the system")
+endif()

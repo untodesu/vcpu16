@@ -1,0 +1,40 @@
+This is the VCPU-16 assembler.
+
+Generic command line usage:
+    vcpu-as [options] filename
+    options:
+        -o <filename>   -- specify the output filename
+        -h              -- print a help message and exit
+        -v              -- print version and exit
+    filename            -- input source file
+
+VCPU-16 assembler uses AT&T syntax meaning that
+any operand must have a valid prefix and any instruction
+needs to be as verbose as possible.
+
+Assembler feature checklist:
+[X] Parsing mnemonics, registers and literal values
+[X] Generating a valid VCPU bytecode
+[X] Label support
+[ ] Basic directive support
+[ ] Support for formats different than binary
+
+Code example.
+The following code tests the features
+of the assembler and of the runtime.
+
+        mov $0x8000, %R0        # Video buffer
+        mov $0x0800, %R1        # Base character
+        loop:
+            ige $0x0FFF, %R1    # If exceeds maximum character
+            mov $end, %PC       # then finished
+            mwr %R1, %R0        # Write memory[R0]
+            inc %R0             # R0++
+            inc %R1             # R1++
+            mov $loop, %PC      # loop back
+        end:
+            mov $end, %PC       # loop indefinitely
+
+There's a lot of things left for me to do
+but in general the assembler is pretty much
+finished and can be used to write programs.
