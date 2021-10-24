@@ -1,40 +1,70 @@
-# KBtest.S - test keyboard
-start:
-    mov $handler, %ia
-    sti
-loop:
-    hlt
-    mov $loop, %pc
+# KBtest.S
+# Test the capabilities of the keyboard.
 
-handler:
-    ieq $0x000F, %r0
-    mov $kb_int, %pc
+# REGISTER LAYOUT:
+#   R0 - scratch register.
+#   R1 - scratch register.
+#   R2 - scratch register.
+#   R3 - scratch register.
+#   R4 - LPM-20 text buffer. 
+
+start:
+    ior $0x1F01, %R4
+    mov $on_int, %IA
+    sti
+hang:
+    hlt
+    mov $hang, %PC
+
+on_int:
+    ieq $0x000F, %R0
+    mov $kb_int, %PC
     rfi
 
 kb_int:
-    ior $0x000F, %r0
-    ior $0x1F03, %r1
-    ieq $0xFF01, %r0
-    mov $kb_backspace, %pc
-    mov %r0, %r2
-    and $0xFF00, %r2
-    ieq $0xFF00, %r2
-    rfi
-    and $0x00FF, %r0
-    bor $0x0F00, %r0
-    mov %r1, %r2
-    add $0x8000, %r1
-    mwr %r0, %r1
-    inc %r2
-    iow %r2, $0x1F03
+    ior $0x000F, %R0
+    ior $0x1F02, %R1
+
+    # backspace
+    ieq $0xFF01, %R0
+    mov $backsp, %PC
+
+    # any other special character
+    mov %R0, %R2
+    and $0xFF00, %R2
+    ieq $0xFF00, %R2
     rfi
 
-kb_backspace:
-    ieq $0, %r1
+    # apply color
+    and $0x00FF, %R0
+    bor $0x1F00, %R0
+
+    # write to the buffer
+    mov %R1, %R2
+    add %R4, %R1
+    mwr %R0, %R1
+
+    # update the cursor
+    inc %R2
+    iow %R2, $0x1F02
+
     rfi
-    dec %r1
-    mov %r1, %r2
-    add $0x8000, %r1
-    mwr $0x0000, %r1
-    iow %r2, $0x1F03
+
+backsp:
+    xor %R3, %R3
+
+    # nothing to do
+    ieq %R3, %R1
+    rfi
+
+    dec %R1
+
+    # write null to the buffer
+    mov %R1, %R2
+    add %R4, %R1
+    mwr %R3, %R1
+
+    # update the cursor
+    iow %R2, $0x1F02
+
     rfi
