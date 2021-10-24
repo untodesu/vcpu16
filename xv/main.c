@@ -1,34 +1,32 @@
+#include <errno.h>
+#include <glad/gl.h>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_opengl.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 #include <vcpu16.h>
 #include "keyboard.h"
 #include "lpm25.h"
 
-static void die(const char *fmt, ...)
-{
-    va_list ap;
-    va_start(ap, fmt);
-    vfprintf(stderr, fmt, ap);
-    va_end(ap);
-    abort();
-}
-
 static void xv_ioread(struct vcpu *cpu, unsigned short port, unsigned short *value)
 {
-    kb_ioread(cpu, port, value);
-    lpm25_ioread(cpu, port, value);
+    if(kb_ioread(cpu, port, value))
+        return;
+    if(lpm25_ioread(cpu, port, value))
+        return;
 }
 
 static void xv_iowrite(struct vcpu *cpu, unsigned short port, unsigned short value)
 {
-    lpm25_iowrite(cpu, port, value);
+    if(lpm25_iowrite(cpu, port, value))
+        return;
 }
 
 int main(int argc, char **argv)
 {
     SDL_Window *window;
-    SDL_Renderer *renderer;
+    SDL_GLContext context;
     struct vcpu cpu;
     FILE *infile;
     size_t i;
@@ -38,27 +36,50 @@ int main(int argc, char **argv)
     int running, rendering;
     SDL_Event event;
 
-    if(SDL_Init(SDL_INIT_EVERYTHING))
-        die("SDL_Init failed\n");
+    if(SDL_Init(SDL_INIT_EVERYTHING)) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_Init failed");
+        return 1;
+    }
 
-    window = SDL_CreateWindow(argv[0], SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, LPM25_WIDTH * LPM25_CH_WIDTH * 4, LPM25_HEIGHT * LPM25_CH_HEIGHT * 4, 0);
-    if(!window)
-        die("SDL_CreateWindow failed\n");
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+
+    window = SDL_CreateWindow(argv[0], SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, LPM25_WIDTH * LPM25_CH_WIDTH * 4, LPM25_HEIGHT * LPM25_CH_HEIGHT * 4, SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE);
+    if(!window) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_CreateWindow failed");
+        return 1;
+    }
     
-    renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_ACCELERATED);
-    if(!renderer)
-        die("SDL_CreateRenderer failed\n");
+    context = SDL_GL_CreateContext(window);
+    if(!context) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "SDL_GL_CreateContext failed");
+        return 1;
+    }
+
+    SDL_GL_MakeCurrent(window, context);
+    if(!gladLoadGL((GLADloadfunc)(&SDL_GL_GetProcAddress))) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "gladLoadGL failed");
+        return 1;
+    }
+
+    if(!GLAD_GL_EXT_texture_filter_anisotropic)
+        SDL_LogWarn(SDL_LOG_CATEGORY_APPLICATION, "No anisotropic filtering extension found, expect bad quality!");
 
     init_vcpu(&cpu, NULL);
     cpu.on_ioread = &xv_ioread;
     cpu.on_iowrite = &xv_iowrite;
 
-    if(argc < 2)
-        die("Argument required!\n");
+    if(argc < 2) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Argument required!\n");
+        return 1;
+    }
     
     infile = fopen(argv[1], "rb");
-    if(!infile)
-        die("Failed to load %s\n", argv[1]);
+    if(!infile) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "%s: %s", argv[1], strerror(errno));
+        return 1;
+    }
 
     fseek(infile, 0, SEEK_END);
     long size = ftell(infile) / sizeof(uint16_t);
@@ -75,7 +96,7 @@ int main(int argc, char **argv)
         (*cpu.memory)[i] = vcpu_be16_to_host((*cpu.memory)[i]);
 
     init_kb();
-    init_lpm25(renderer, &cpu);
+    init_lpm25(&cpu);
 
     cpu_freq = 24000.0f;
     if(argc > 2)
@@ -98,10 +119,10 @@ int main(int argc, char **argv)
             cpu_clock -= cpu_step;
         }
 
-        if(rendering) {
-            lpm25_render(renderer, &cpu);
-            SDL_RenderPresent(renderer);
-        }
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        lpm25_render(&cpu);
+        SDL_GL_SwapWindow(window);
 
         SDL_Delay(fps);
 
@@ -112,14 +133,18 @@ int main(int argc, char **argv)
             }
 
             if(event.type == SDL_WINDOWEVENT) {
-                switch(event.window.type) {
+                switch(event.window.event) {
                     case SDL_WINDOWEVENT_RESTORED:
                         rendering = 1;
                         break;
-                    case SDL_WINDOW_MINIMIZED:
+                    case SDL_WINDOWEVENT_MINIMIZED:
                         rendering = 0;
                         break;
+                    case SDL_WINDOWEVENT_RESIZED:
+                        glViewport(0, 0, event.window.data1, event.window.data2);
+                        break;
                 }
+
                 break;
             }
 
@@ -129,7 +154,7 @@ int main(int argc, char **argv)
 
     shutdown_lpm25();
     shutdown_vcpu(&cpu);
-    SDL_DestroyRenderer(renderer);
+    SDL_GL_DeleteContext(context);
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;

@@ -93,20 +93,20 @@ int vcpu_step(struct vcpu *cpu);
 
 #if defined(_WIN32)
 #include <windows.h>
-static inline unsigned short vcpu_be16_to_host(unsigned short word) { return htons(word); }
-static inline unsigned short vcpu_host_to_be16(unsigned short host) { return ntohs(host); }
+#define vcpu_be16_to_host(word) htons(word)
+#define vcpu_host_to_be16(word) ntohs(word)
 #elif defined(__linux__) || defined(__CYGWIN__)
 #include <endian.h>
-static inline unsigned short vcpu_be16_to_host(unsigned short word) { return be16toh(word); }
-static inline unsigned short vcpu_host_to_be16(unsigned short host) { return htobe16(host); }
+#define vcpu_be16_to_host(word) be16toh(word)
+#define vcpu_host_to_be16(word) htobe16(word)
 #elif defined(__OpenBSD__)
 #include <sys/endian.h>
-static inline unsigned short vcpu_be16_to_host(unsigned short word) { return be16toh(word); }
-static inline unsigned short vcpu_host_to_be16(unsigned short host) { return htobe16(host); }
+#define vcpu_be16_to_host(word) be16toh(word)
+#define vcpu_host_to_be16(word) htobe16(word)
 #elif defined(__NetBSD__) || defined(__FreeBSD__) || defined(__DragonFly__)
 #include <sys/endian.h>
-static inline unsigned short vcpu_be16_to_host(unsigned short word) { return betoh16(word); }
-static inline unsigned short vcpu_host_to_be16(unsigned short host) { return htobe16(host); }
+#define vcpu_be16_to_host(word) betoh16(word)
+#define vcpu_host_to_be16(word) htobe16(word)
 #else
 #error Platform is unsupported!
 #endif

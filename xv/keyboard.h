@@ -19,6 +19,6 @@
 
 void init_kb(void);
 void kb_update(struct vcpu *cpu, const SDL_Event *event);
-void kb_ioread(struct vcpu *cpu, unsigned short port, unsigned short *value);
+int kb_ioread(struct vcpu *cpu, unsigned short port, unsigned short *value);
 
 #endif 

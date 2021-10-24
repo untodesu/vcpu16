@@ -1,5 +1,11 @@
+#include <glad/gl.h>
+#include <SDL2/SDL.h>
+#include <stdlib.h>
 #include <string.h>
 #include "lpm25.h"
+
+#define TEXTURE_WIDTH   (LPM25_WIDTH * LPM25_CH_WIDTH)
+#define TEXTURE_HEIGHT  (LPM25_HEIGHT * LPM25_CH_HEIGHT)
 
 struct lpm_cursor {
     unsigned short pos;
@@ -54,53 +60,161 @@ static const unsigned short charset[128 * 2] = {
     0x0000, 0x0000
 };
 
-static SDL_Texture *texture = NULL;
+#define _string_1(x) #x
+#define _string_2(x) _string_1(x)
+
+static const char *vert_src =
+    "#version 420 core                                                              \n"
+    "const vec4 verts[6] = {                                                        \n"
+    "   vec4(-1.0, -1.0, 0.0, 1.0),                                                 \n"
+    "   vec4(-1.0,  1.0, 0.0, 0.0),                                                 \n"
+    "   vec4( 1.0,  1.0, 1.0, 0.0),                                                 \n"
+    "   vec4( 1.0,  1.0, 1.0, 0.0),                                                 \n"
+    "   vec4( 1.0, -1.0, 1.0, 1.0),                                                 \n"
+    "   vec4(-1.0, -1.0, 0.0, 1.0),                                                 \n"
+    "};                                                                             \n"
+    "layout(location = 0) out vec2 texcoord;                                        \n"
+    "void main(void)                                                                \n"
+    "{                                                                              \n"
+    "   gl_Position = vec4(verts[gl_VertexID].xy, 0.0, 1.0);                        \n"
+    "   texcoord = verts[gl_VertexID].zw;                                           \n"
+    "}                                                                              \n";
+
+static const char *frag_src =
+    "#version 420 core                                                              \n"
+    "#define TEXTURE_WIDTH "_string_2(TEXTURE_WIDTH)"                               \n"
+    "#define TEXTURE_HEIGHT "_string_2(TEXTURE_HEIGHT)"                             \n"
+    "layout(location = 0) out vec4 target;                                          \n"
+    "layout(location = 0) in vec2 uv;                                               \n"
+    "layout(binding = 0) uniform sampler2D screen;                                  \n"
+    "uniform float curtime;                                                         \n"
+    "float rand(vec2 uv)                                                            \n"
+    "{                                                                              \n"
+    "   float t = fract(curtime);                                                   \n"
+    "   return fract(sin(dot(uv + 0.07 * t, vec2(12.9898, 78.233))) * 43758.5453);  \n"
+    "}                                                                              \n"
+    "void main(void)                                                                \n"
+    "{                                                                              \n"
+    "   const int num_step = 16;                                                    \n"
+    "   const vec2 texel_size = 1.0 / vec2(TEXTURE_WIDTH, TEXTURE_HEIGHT);          \n"
+    "   vec4 abb = vec4(0.0, 0.0, 0.0, 0.0);                                        \n"
+    "   vec4 src = texture(screen, uv);                                             \n"
+    "   for(int i = 1; i <= num_step; i++) {                                        \n"
+    "       float shift = (float(i) / float(num_step)) * texel_size.x * 0.4;        \n"
+    "       abb.r += texture(screen, vec2(uv.x + shift, uv.y)).r;                   \n"
+    "       abb.b += texture(screen, vec2(uv.x - shift, uv.y)).b;                   \n"
+    "   }                                                                           \n"
+    "   abb /= float(num_step);                                                     \n"
+    "   target = vec4(abb.r, src.g, abb.b, src.a);                                  \n"
+    "   target *= 0.95;                                                             \n"
+    "   target += 0.05 * rand((uv - mod(uv, texel_size * 0.4)));                    \n"
+    "}                                                                              \n";
+
+typedef unsigned char pixel_t[3];
+static pixel_t pixels[TEXTURE_HEIGHT][TEXTURE_WIDTH] = { 0 };
+static GLuint vao = 0, texture = 0, program = 0;
+static GLint curtime_uniform = 0;
 static unsigned short text_off = 0;
 static unsigned short char_off = 0;
 static struct lpm_cursor cursor;
 
-static inline void unpack_color(uint8_t value, SDL_Color *c)
+static void unpack_color(uint8_t value, pixel_t c)
 {
     Uint8 cv = (value & 1) ? 255 : 180;
-    c->r = ((value >> 3) & 1) ? cv : 0;
-    c->g = ((value >> 2) & 1) ? cv : 0;
-    c->b = ((value >> 1) & 1) ? cv : 0;
+    c[0] = ((value >> 3) & 1) ? cv : 0;
+    c[1] = ((value >> 2) & 1) ? cv : 0;
+    c[2] = ((value >> 1) & 1) ? cv : 0;
 }
 
-static inline void invert_color(SDL_Color *c)
+static void invert_color(pixel_t c)
 {
-    c->r = (255 - c->r);
-    c->g = (255 - c->g);
-    c->b = (255 - c->b);
+    c[0] = (255 - c[0]);
+    c[1] = (255 - c[1]);
+    c[2] = (255 - c[2]);
 }
 
-void init_lpm25(SDL_Renderer *renderer, struct vcpu *cpu)
+static GLuint compile_shader(GLenum stage, const char *source)
 {
-    texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888, SDL_TEXTUREACCESS_TARGET, LPM25_WIDTH * LPM25_CH_WIDTH, LPM25_HEIGHT * LPM25_CH_HEIGHT);
+    int i;
+    char *info_log;
+    GLuint shader;
+    
+    glGenVertexArrays(1, &vao);
+
+    shader = glCreateShader(stage);
+    glShaderSource(shader, 1, &source, NULL);
+    glCompileShader(shader);
+
+    glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &i);
+    if(i > 1) {
+        info_log = malloc(i);
+        SDL_assert(("Out of memory!", info_log));
+        glGetShaderInfoLog(shader, i, NULL, info_log);
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION, "%s", info_log);
+        free(info_log);
+    }
+
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &i);
+    if(!i) {
+        glDeleteShader(shader);
+        return 0;
+    }
+
+    return shader;
+}
+
+void init_lpm25(struct vcpu *cpu)
+{
+    int status;
+    float max_aniso;
+    GLuint vert, frag;
+
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, TEXTURE_WIDTH, TEXTURE_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    vert = compile_shader(GL_VERTEX_SHADER, vert_src);
+    frag = compile_shader(GL_FRAGMENT_SHADER, frag_src);
+    program = glCreateProgram();
+    glAttachShader(program, vert);
+    glAttachShader(program, frag);
+    glLinkProgram(program);
+    glGetProgramiv(program, GL_LINK_STATUS, &status);
+    SDL_assert(("glLinkProgram failed!", status));
+
+    curtime_uniform = glGetUniformLocation(program, "curtime");
+
     text_off = 0x8000;
     char_off = 0x8A00;
     cursor.pos = 0;
     cursor.blink = 500;
     cursor.visible = 1;
     cursor.last_swap = SDL_GetTicks();
+
     memcpy((*cpu->memory) + char_off, charset, sizeof(charset));
 }
 
 void shutdown_lpm25()
 {
-    SDL_DestroyTexture(texture);
+    glDeleteProgram(program);
+    glDeleteTextures(1, &texture);
+    glDeleteVertexArrays(1, &vao);
 }
 
-void lpm25_render(SDL_Renderer *renderer, const struct vcpu *cpu)
+void lpm25_render(const struct vcpu *cpu)
 {
     Uint32 ticks;
-    SDL_Color bg, fg;
+    pixel_t bg, fg;
     unsigned int chv;
     int i, j;
     unsigned short pos, word;
     const unsigned short *chp;
     unsigned char row;
-    int y, x;
+    int x, y, tx, ty;
     
     ticks = SDL_GetTicks();
     if(cursor.blink && ((ticks - cursor.last_swap) > (Uint32)cursor.blink)) {
@@ -108,71 +222,78 @@ void lpm25_render(SDL_Renderer *renderer, const struct vcpu *cpu)
         cursor.last_swap = ticks;
     }
 
-    SDL_SetRenderTarget(renderer, texture);
     for(i = 0; i < LPM25_HEIGHT; i++) {
         for(j = 0; j < LPM25_WIDTH; j++) {
             pos = i * LPM25_WIDTH + j;
             word = (*cpu->memory)[text_off + pos];
             chp = (*cpu->memory) + char_off + (word & 0xFF) * 2;
 
-            unpack_color((word >> 12) & 0x0F, &bg);
-            unpack_color((word >> 8) & 0x0F, &fg);
+            unpack_color((word >> 12) & 0x0F, bg);
+            unpack_color((word >> 8) & 0x0F, fg);
 
             if(pos == cursor.pos && cursor.visible) {
-                invert_color(&bg);
-                invert_color(&fg);
+                invert_color(bg);
+                invert_color(fg);
             }
 
             chv = (chp[0] << 16) | chp[1];
             for(y = 0; y < LPM25_CH_HEIGHT; y++) {
                 row = (chv >> (32 - (LPM25_CH_WIDTH * (y + 1)))) & 0x0F;
                 for(x = 0; x < LPM25_CH_WIDTH; x++) {
-                    if((row >> (LPM25_CH_WIDTH - x - 1)) & 1)
-                        SDL_SetRenderDrawColor(renderer, fg.r, fg.g, fg.b, 255);
-                    else
-                        SDL_SetRenderDrawColor(renderer, bg.r, bg.g, bg.b, 255);
-                    SDL_RenderDrawPoint(renderer, j * LPM25_CH_WIDTH + x, i * LPM25_CH_HEIGHT + y);
+                    tx = x + (j * LPM25_CH_WIDTH);
+                    ty = y + (i * LPM25_CH_HEIGHT);
+                    memcpy(pixels[ty][tx], ((row >> (LPM25_CH_WIDTH - x - 1)) & 1) ? fg : bg, sizeof(pixel_t));
                 }
             }
         }
     }
-    SDL_SetRenderTarget(renderer, NULL);
-    SDL_RenderCopy(renderer, texture, NULL, NULL);
+
+    glBindTexture(GL_TEXTURE_2D, texture);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, TEXTURE_WIDTH, TEXTURE_HEIGHT, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+    glActiveTexture(GL_TEXTURE0);
+    glUseProgram(program);
+    glBindVertexArray(vao);
+    glProgramUniform1f(program, curtime_uniform, SDL_GetPerformanceCounter() / (float)SDL_GetPerformanceFrequency());
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
-void lpm25_ioread(struct vcpu *cpu, unsigned short port, unsigned short *value)
+int lpm25_ioread(struct vcpu *cpu, unsigned short port, unsigned short *value)
 {
     switch(port) {
         case LPM25_IOPORT_TEXT_OFF:
             *value = text_off;
-            break;
+            return 1;
         case LPM25_IOPORT_CHAR_OFF:
             *value = char_off;
-            break;
+            return 1;
         case LPM25_IOPORT_CUR_POS:
             *value = cursor.pos;
-            break;
+            return 1;
         case LPM25_IOPORT_CUR_BLINK:
             *value = cursor.blink;
-            break;
+            return 1;
     }
+
+    return 0;
 }
 
-void lpm25_iowrite(struct vcpu *cpu, unsigned short port, unsigned short value)
+int lpm25_iowrite(struct vcpu *cpu, unsigned short port, unsigned short value)
 {
     switch(port) {
         case LPM25_IOPORT_TEXT_OFF:
             text_off = value;
-            return;
+            return 1;
         case LPM25_IOPORT_CHAR_OFF:
             char_off = value;
-            return;
+            return 1;
         case LPM25_IOPORT_CUR_POS:
             cursor.pos = value;
-            return;
+            return 1;
         case LPM25_IOPORT_CUR_BLINK:
             cursor.blink = value;
             cursor.visible = !!value;
-            return;
+            return 1;
     }
+
+    return 0;
 }

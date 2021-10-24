@@ -14,13 +14,13 @@ struct label {
     char identifier[64];
 };
 
-static inline int ext_stricmp(const char *a, const char *b)
+static int ext_stricmp(const char *a, const char *b)
 {
     while(a[0] && tolower(a[0]) == tolower(b[0])) { a++; b++; }
     return a[0] - b[0];
 }
 
-static inline long ext_strtol(const char *a)
+static long ext_strtol(const char *a)
 {
     if(a[0] == '0' && tolower(a[1]) == 'x')
         return strtol(a + 2, NULL, 16);
@@ -29,7 +29,7 @@ static inline long ext_strtol(const char *a)
     return strtol(a, NULL, 10);
 }
 
-static inline unsigned short get_opcode(const char *id)
+static unsigned short get_opcode(const char *id)
 {
     #define _opcode_x(x) if(!ext_stricmp(id, #x)) return VCPU_OPCODE_##x
 
@@ -72,7 +72,7 @@ static inline unsigned short get_opcode(const char *id)
     #undef _opcode_x
 }
 
-static inline unsigned short get_register(const char *id)
+static unsigned short get_register(const char *id)
 {
     #define _register_x(x) if(!ext_stricmp(id, #x)) return VCPU_REGISTER_##x
 
@@ -97,7 +97,7 @@ static inline unsigned short get_register(const char *id)
     #undef _register_x
 }
 
-static inline char *skip_comments(char *line)
+static char *skip_comments(char *line)
 {
     size_t n, i;
 
@@ -116,7 +116,7 @@ static inline char *skip_comments(char *line)
     return NULL;
 }
 
-static inline int is_empty_or_whitespace(const char *s)
+static int is_empty_or_whitespace(const char *s)
 {
     size_t i;
     size_t n = strlen(s);
@@ -131,7 +131,7 @@ static inline int is_empty_or_whitespace(const char *s)
     return 1;
 }
 
-static inline const struct label *find_label(const char *name, const struct label *labels, size_t num_labels)
+static const struct label *find_label(const char *name, const struct label *labels, size_t num_labels)
 {
     size_t i;
     for(i = 0; i < num_labels; i++) {

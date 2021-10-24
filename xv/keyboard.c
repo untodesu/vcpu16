@@ -71,12 +71,14 @@ void kb_update(struct vcpu *cpu, const SDL_Event *event)
     }
 }
 
-void kb_ioread(struct vcpu *cpu, unsigned short port, unsigned short *value)
+int kb_ioread(struct vcpu *cpu, unsigned short port, unsigned short *value)
 {
     switch(port) {
         case KB_IOPORT:
             if(buffer_size > 0)
                 *value = buffer[--buffer_size];
-            break;
+            return 1;
     }
+
+    return 0;
 }

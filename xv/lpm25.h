@@ -1,6 +1,5 @@
 #ifndef _LPM25_H_
 #define _LPM25_H_
-#include <SDL2/SDL.h>
 #include <vcpu16.h>
 
 #define LPM26_HARDWARE_ID       (0x1F25)
@@ -14,10 +13,10 @@
 #define LPM25_IOPORT_CUR_POS    (0x1F03)
 #define LPM25_IOPORT_CUR_BLINK  (0x1F04)
 
-void init_lpm25(SDL_Renderer *renderer, struct vcpu *cpu);
+void init_lpm25(struct vcpu *cpu);
 void shutdown_lpm25(void);
-void lpm25_render(SDL_Renderer *renderer, const struct vcpu *cpu);
-void lpm25_ioread(struct vcpu *cpu, unsigned short port, unsigned short *value);
-void lpm25_iowrite(struct vcpu *cpu, unsigned short port, unsigned short value);
+void lpm25_render(const struct vcpu *cpu);
+int lpm25_ioread(struct vcpu *cpu, unsigned short port, unsigned short *value);
+int lpm25_iowrite(struct vcpu *cpu, unsigned short port, unsigned short value);
 
 #endif
