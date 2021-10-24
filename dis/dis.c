@@ -25,6 +25,7 @@ static const char *get_mnemonic(unsigned int id)
     _mnemonic_x(STI);
     _mnemonic_x(INT);
     _mnemonic_x(RFI);
+    _mnemonic_x(CPI);
     _mnemonic_x(IEQ);
     _mnemonic_x(INE);
     _mnemonic_x(IGT);

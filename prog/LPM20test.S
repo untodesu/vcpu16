@@ -2,11 +2,10 @@
 # Tests the capabilities of LPM-25
 
 # REGISTER LAYOUT:
-#   R0  - LPM-25 text buffer start.
-#   R1  - upper limit. upon reaching this limit
-#         the program resets the pointer.
-#   R2  - scratch pointer.
-#   R3  - scratch character.
+#   R0 - LPM-25 text buffer start.
+#   R1 - upper limit. upon reaching this limit the program resets the pointer.
+#   R2 - scratch pointer.
+#   R3 - scratch character.
 
 ior $0x1F01, %R0
 mov $0x1000, %R1

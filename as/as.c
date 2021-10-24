@@ -47,6 +47,7 @@ static unsigned short get_opcode(const char *id)
     _opcode_x(STI);
     _opcode_x(INT);
     _opcode_x(RFI);
+    _opcode_x(CPI);
     _opcode_x(IEQ);
     _opcode_x(INE);
     _opcode_x(IGT);

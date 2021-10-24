@@ -19,6 +19,7 @@
 #define VCPU_OPCODE_STI 0x0B
 #define VCPU_OPCODE_INT 0x0C
 #define VCPU_OPCODE_RFI 0x0D
+#define VCPU_OPCODE_CPI 0x1E
 #define VCPU_OPCODE_IEQ 0x20
 #define VCPU_OPCODE_INE 0x21
 #define VCPU_OPCODE_IGT 0x22
@@ -57,6 +58,9 @@
 #define VCPU_REGISTER_SP 0x0E
 #define VCPU_REGISTER_PC 0x0F
 
+#define VCPU_CPI_DEF_VENDOR_ID  0x1F00
+#define VCPU_CPI_DEF_SPEED      25000
+
 struct vcpu_instruction {
     unsigned char opcode;
     struct {
@@ -75,6 +79,11 @@ struct vcpu_interrupt_queue {
     unsigned short queue[VCPU_MAX_INTERRUPTS];
 };
 
+struct vcpu_cpi_data {
+    unsigned short vendor_id;
+    unsigned int speed;
+};
+
 typedef unsigned short vcpu_memory_t[VCPU_MEM_SIZE];
 
 struct vcpu {
@@ -84,6 +93,7 @@ struct vcpu {
     struct vcpu_interrupt_queue interrupts;
     vcpu_ioread_t on_ioread;
     vcpu_iowrite_t on_iowrite;
+    struct vcpu_cpi_data cpi;
 };
 
 void init_vcpu(struct vcpu *cpu, vcpu_memory_t *shared_memory);

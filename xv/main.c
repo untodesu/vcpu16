@@ -9,8 +9,6 @@
 #include "dev/lpm20.h"
 #include "cross_clock.h"
 
-#define XV_CPU_FREQUENCY 25000
-
 static void xv_ioread(struct vcpu *cpu, unsigned short port, unsigned short *value)
 {
     if(kb_ioread(cpu, port, value))
@@ -43,7 +41,13 @@ int main(int argc, char **argv)
         fprintf(stderr, "%s: argument required!\n", argv[0]);
         return 1;
     }
-    
+
+    if(argc >= 3) {
+        cpu.cpi.speed = strtoul(argv[2], NULL, 10);
+        if(!cpu.cpi.speed)
+            cpu.cpi.speed = VCPU_CPI_DEF_SPEED;
+    }
+
     infile = fopen(argv[1], "rb");
     if(!infile) {
         fprintf(stderr, "%s: %s!\n", argv[1], strerror(errno));
@@ -72,7 +76,7 @@ int main(int argc, char **argv)
     init_kb();
     init_lpm20();
 
-    vcpu_dt = 1.0 / (float)XV_CPU_FREQUENCY;
+    vcpu_dt = 1.0 / (float)cpu.cpi.speed;;
     vcpu_clock = 0.0;
 
     init_cross_clock();

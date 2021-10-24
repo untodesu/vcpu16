@@ -73,6 +73,9 @@ void init_vcpu(struct vcpu *cpu, vcpu_memory_t *shared_memory)
 
     cpu->on_ioread = NULL;
     cpu->on_iowrite;
+
+    cpu->cpi.vendor_id = VCPU_CPI_DEF_VENDOR_ID;
+    cpu->cpi.speed = VCPU_CPI_DEF_SPEED;
 }
 
 void shutdown_vcpu(struct vcpu *cpu)
@@ -98,6 +101,7 @@ void vcpu_interrupt(struct vcpu *cpu, unsigned short message)
 
 int vcpu_step(struct vcpu *cpu)
 {
+    int result = 1;
     unsigned short scratch;
     struct instruction_internal instruction;
 
@@ -161,6 +165,11 @@ int vcpu_step(struct vcpu *cpu)
             cpu->regs[VCPU_REGISTER_R0] = (*cpu->memory)[++cpu->regs[VCPU_REGISTER_SP]];
             cpu->regs[VCPU_REGISTER_PC] = (*cpu->memory)[++cpu->regs[VCPU_REGISTER_SP]];
             cpu->interrupts.busy = 0;
+            return 1;
+        case VCPU_OPCODE_CPI:
+            cpu->regs[VCPU_REGISTER_R0] = cpu->cpi.vendor_id;
+            cpu->regs[VCPU_REGISTER_R1] = (cpu->cpi.speed >> 16) & 0xFFFF;
+            cpu->regs[VCPU_REGISTER_R2] = cpu->cpi.speed & 0xFFFF;
             return 1;
         case VCPU_OPCODE_IEQ:
             if(!(instruction.b.value == instruction.a.value))
@@ -229,6 +238,4 @@ int vcpu_step(struct vcpu *cpu)
             vcpu_set_value(cpu, instruction.a.value - 1, instruction.a.ref);
             return 1;
     }
-
-
 }

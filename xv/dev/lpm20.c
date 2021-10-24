@@ -1,4 +1,4 @@
-#include <assert.h>
+#include <ctype.h>
 #include <ncurses.h>
 #include "dev/lpm20.h"
 
@@ -39,7 +39,7 @@ void init_lpm20(void)
     text_off = 0x8000;
 
     for(i = 0; i < MAX_COLORS; i++) for(j = 0; j < MAX_COLORS; j++)
-        init_pair(calc_pair_id(i, j), colormap[j], colormap[i]);
+        init_pair(calc_pair_id(i, j), j, i);
 }
 
 void shutdown_lpm20(void)
@@ -68,7 +68,7 @@ void lpm20_draw(const struct vcpu *cpu)
             if(abyte & (1 << 7))
                 attrib |= A_REVERSE;
             attron(attrib);
-            mvaddch(i, j, cbyte ? cbyte : ' ');
+            mvaddch(i, j, isprint(cbyte) ? cbyte : ' ');
             attroff(attrib);
         }
     }
