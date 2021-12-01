@@ -16,8 +16,7 @@ Assembler feature checklist:
 [X] Parsing mnemonics, registers and literal values
 [X] Generating a valid VCPU bytecode
 [X] Label support
-[ ] Basic directive support
-[ ] Support for formats different than binary
+[X] Directive support
 
 Code example.
 The following code tests the features

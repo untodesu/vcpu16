@@ -191,6 +191,7 @@ int main(int argc, char **argv)
     FILE *infile = NULL;
     FILE *outfile = NULL;
     int r, j;
+    long k = 0;
     int aout = 0;
     size_t num_lines;
     struct label *labels;
@@ -199,7 +200,8 @@ int main(int argc, char **argv)
     unsigned short virt_pc;
     char line[128];
     char *line_p;
-    char *label_p, *scratch;
+    char *label_p;
+    char *scratch, *scratch2;
     char identifier[64];
     char *line_p_lab;
     unsigned short word, opcode, preg;
@@ -285,6 +287,55 @@ int main(int argc, char **argv)
 
         if(sscanf(line_p, " %63s%n", identifier, &nc) == 1) {
             line_p += nc;
+
+            if(identifier[0] == '.') {
+                if(!ext_stricmp(identifier, ".dw") || !ext_stricmp(identifier, ".dat")) {
+                    while(sscanf(line_p, " %63[^, \t\n]%n", identifier, &nc) >= 1) {
+                        line_p += nc;
+                        while(isspace(*line_p) || *line_p == ',')
+                            line_p++;
+                        virt_pc++;
+                    }
+
+                    continue;
+                }
+                
+                if(!ext_stricmp(identifier, ".ascii") || !ext_stricmp(identifier, ".string")) {
+                    if((scratch = strchr(line_p, '\"'))) {
+                        scratch2 = strrchr(line_p, '\"');
+                        if(scratch2 && scratch != scratch2) {
+                            scratch++;
+                            *scratch2 = 0;
+                            virt_pc += strlen(scratch);
+                        }
+                    }
+
+                    continue;
+                }
+                
+                if(!ext_stricmp(identifier, ".asciz") || !ext_stricmp(identifier, ".asciiz")) {
+                    if((scratch = strchr(line_p, '\"'))) {
+                        scratch2 = strrchr(line_p, '\"');
+                        if(scratch2 && scratch != scratch2) {
+                            scratch++;
+                            *scratch2 = 0;
+                            virt_pc += strlen(scratch) + 1;
+                        }
+                    }
+
+                    continue;
+                }
+
+                if(!ext_stricmp(identifier, ".skip")) {
+                    if(sscanf(line_p, " %63[^, \t\n]", identifier) == 1)
+                        virt_pc += (unsigned short)ext_strtol(identifier);
+                    continue;
+                }
+
+                warning("unknown directive: %s", identifier);
+                continue;
+            }
+
             virt_pc++;
 
             for(j = 0; j < 2; j++) {
@@ -328,6 +379,69 @@ int main(int argc, char **argv)
         }
 
         line_p += nc;
+
+        if(identifier[0] == '.') {
+            if(!ext_stricmp(identifier, ".dw") || !ext_stricmp(identifier, ".dat")) {
+                while(sscanf(line_p, " %63[^, \t\n], %n", identifier, &nc) == 1) {
+                    line_p += nc;
+                    while(isspace(*line_p) || *line_p == ',')
+                        line_p++;
+                    word = vcpu_host_to_be16((unsigned short)ext_strtol(identifier));
+                    fwrite(&word, sizeof(unsigned short), 1, outfile);
+                }
+
+                continue;
+            }
+
+            if(!ext_stricmp(identifier, ".ascii") || !ext_stricmp(identifier, ".string")) {
+                if((scratch = strchr(line_p, '\"'))) {
+                    scratch2 = strrchr(line_p, '\"');
+                    if(scratch2 && scratch != scratch2) {
+                        scratch++;
+                        *scratch2 = 0;
+                        while(*scratch) {
+                            word = vcpu_host_to_be16((unsigned short)(*scratch++));
+                            fwrite(&word, sizeof(unsigned short), 1, outfile);
+                        }
+                    }
+                }
+
+                continue;
+            }
+
+            if(!ext_stricmp(identifier, ".asciz") || !ext_stricmp(identifier, ".asciiz")) {
+                if((scratch = strchr(line_p, '\"'))) {
+                    scratch2 = strrchr(line_p, '\"');
+                    if(scratch2 && scratch != scratch2) {
+                        scratch++;
+                        *scratch2 = 0;
+                        while(*scratch) {
+                            word = vcpu_host_to_be16((unsigned short)(*scratch++));
+                            fwrite(&word, sizeof(unsigned short), 1, outfile);
+                        }
+
+                        word = 0;
+                        fwrite(&word, sizeof(unsigned short), 1, outfile);
+                    }
+                }
+
+                continue;
+            }
+
+            if(!ext_stricmp(identifier, ".skip")) {
+                k = 0;
+                word = 0;
+                if(sscanf(line_p, " %63[^, \t\n]", identifier) == 1)
+                    k = ext_strtol(identifier);
+                if(k == 0)
+                    warning("skipping zero words");
+                while(k--)
+                    fwrite(&word, sizeof(unsigned short), 1, outfile);
+                continue;
+            }
+
+            continue;
+        }
 
         word = 0;
         opcode = get_opcode(identifier);

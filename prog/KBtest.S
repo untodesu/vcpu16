@@ -1,13 +1,6 @@
 # KBtest.S
 # Test the capabilities of the keyboard.
 
-# REGISTER LAYOUT:
-#   R0 - scratch register.
-#   R1 - scratch register.
-#   R2 - scratch register.
-#   R3 - scratch register.
-#   R4 - LPM-20 text buffer. 
-
 start:
     ior $0x1F01, %R4
     mov $on_int, %IA
@@ -37,7 +30,7 @@ kb_int:
 
     # apply color
     and $0x00FF, %R0
-    bor $0x1F00, %R0
+    bor $0x0700, %R0
 
     # write to the buffer
     mov %R1, %R2
