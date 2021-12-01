@@ -211,7 +211,7 @@ int vcpu_step(struct vcpu *cpu)
             vcpu_set_value(cpu, instruction.a.value ? (instruction.b.value / instruction.a.value) : 0, instruction.b.ref);
             return 1;
         case VCPU_OPCODE_MOD:
-            vcpu_set_value(cpu, instruction.a.value ? (instruction.b.value / instruction.a.value) : instruction.b.value, instruction.b.ref);
+            vcpu_set_value(cpu, instruction.a.value ? (instruction.b.value % instruction.a.value) : instruction.b.value, instruction.b.ref);
             return 1;
         case VCPU_OPCODE_SHL:
             vcpu_set_value(cpu, instruction.b.value << instruction.a.value, instruction.b.ref);
