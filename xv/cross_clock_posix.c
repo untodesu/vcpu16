@@ -1,4 +1,4 @@
-#if defined(__unix__) || defined(__APPLE__) && !defined(__MACH__)
+#if defined(__unix__) || defined(__APPLE__) // && !defined(__MACH__)
 #include <stddef.h>
 #include <sys/time.h>
 #include "cross_clock.h"

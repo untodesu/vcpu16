@@ -117,6 +117,10 @@ int vcpu_step(struct vcpu *cpu);
 #include <sys/endian.h>
 #define vcpu_be16_to_host(word) betoh16(word)
 #define vcpu_host_to_be16(word) htobe16(word)
+#elif defined(__APPLE__)
+#include <machine/endian.h>
+#define vcpu_be16_to_host(word) htons(word)
+#define vcpu_host_to_be16(word) ntohs(word)
 #else
 #error Platform is unsupported!
 #endif
