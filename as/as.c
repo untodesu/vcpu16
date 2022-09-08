@@ -192,7 +192,7 @@ int main(int argc, char **argv)
     FILE *outfile = NULL;
     int r, j;
     long k = 0;
-    int aout = 0;
+    int aout = 1;
     size_t num_lines;
     struct label *labels;
     int nc;
