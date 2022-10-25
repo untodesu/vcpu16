@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "default",
+            "includePath": [
+                "${workspaceFolder}",
+                "${default}"
+            ],
+            "defines": [
+                "GLFW_INCLUDE_NONE",
+                "IS_RP3D_DOUBLE_PRECISION_ENABLED",
+                "NOMINMAX",
+                "BUILD_VCL",
+                "GIT_PATHS"
+            ],
+            "cppStandard": "c++17",
+            "cStandard": "c99"
+        }
+    ],
+    "version": 4
+}
